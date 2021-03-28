@@ -3,15 +3,7 @@ In order to build the default distribution the quickstart in the README is enoug
 
 ## Build vc4 toolchain
 
-The repo includes the [vc4-toolchain](https://github.com/itszor/vc4-toolchain) submodule. Be sure to pull the submodules then change dir to the submodule folder and edit `buildall.sh` to disable CGEN, changing
-
-`WITHCGEN="--enable-cgen-maint"`
-
-in
-
-`WITHCGEN=`
-
-Then run 
+The repo includes the [vc4-toolchain](https://github.com/itszor/vc4-toolchain) submodule. Be sure to pull the submodules then run 
 
 `$ ./build-all.sh 2>&1 | tee build.log`
 
