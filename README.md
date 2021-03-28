@@ -51,7 +51,7 @@ See the [status file](STATUS.md) for more info about current features.
 Each submodules includes a `docs` folder with its own documentation.
 
 
-## License, credits, contacts, contributing
+## Credits, license, contacts
 
 Metal-Pi is the result of many people's work. For details see the [authors file](AUTHORS.md).
 
