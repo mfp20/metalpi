@@ -85,5 +85,6 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 |USB|yes|yes|yes|yes|yes|USB-host works, USB-device might work|
 |Ethernet|NA|yes|yes|yes|yes|built-in usb ethernet|
 |WiFi|no|no|no|no|no||
-|Create/run LK thread on VPU0|no|no|no|no|no||
+|Create/start/stop/destroy LK threads on VPU0|no|no|no|no|no||
 |Manage gpiod|no|no|no|no|no||
+|GPGPU on QPUs|no|no|no|no|no||
