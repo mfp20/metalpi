@@ -34,7 +34,7 @@ For more info about installing and building Metal-Pi see the [install file](INST
 
 This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) to setup the toolchain and build the default distribution.
 
-The build process will download, build and pack a ready to use folder to be copied on your SD card. It will contains:
+The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
 - the [VC4 libre firmware](https://github.com/mfp20/vc4-firmware) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads.
 - a VC4 version of [littlekernel](https://github.com/littlekernel/lk) running on VPU0,
 - the [VC4 GPIOd](include/gpiod) running on VPU1,
