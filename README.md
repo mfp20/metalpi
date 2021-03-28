@@ -46,6 +46,11 @@ The result is intended to be a ready to use platform but, being 100% open source
 See the [status file](STATUS.md) for more info about current features.
 
 
+## Documentation
+
+Each submodules includes a `docs` folder with its own documentation.
+
+
 ## License, credits, contacts, contributing
 
 Metal-Pi is the result of many people's work. For details see the [authors file](AUTHORS.md).
