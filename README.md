@@ -48,7 +48,7 @@ See the [status file](STATUS.md) for more info about current features.
 
 ## Documentation
 
-Each submodules includes a `docs` folder with its own documentation.
+Each submodule includes a `docs` folder with its own documentation.
 
 
 ## Credits, license, contacts
