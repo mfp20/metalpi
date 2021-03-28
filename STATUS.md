@@ -40,13 +40,13 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 
 (10) Secondary Memory Interface: fast parallel interface to external memory chips; can be used as video PHY.
 
-(11) ISP???
+(11) ISP (?): logic to convert bayer images to RGB or YUV, and correcting lens artifacts.
 
-(12) VCE (?): small processor to assist the video codec hardware blocks.
+(12) VCE (?): logic to assist the video codec hardware blocks.
 
-(13) Power management and frequency scaling
+(13) Power management and frequency scaling.
 
-(14) CLOCK???
+(14) Timing generation in the SoC. [Details and a nice diagram](https://elinux.org/The_Undocumented_Pi#Clocks).
 
 (15) ARM core and ARM-accessible peripherals
 
