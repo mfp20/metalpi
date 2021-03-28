@@ -28,7 +28,7 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 
 (4) Pixel Valve: takes video timing information, generates the hsync/vsync pulses, and throttles the flow of pixels from the HVS FIFO to the output PHY.
 
-(5) VEC: video PHY, it generates NTSC/PAL signals.
+(5) Video Encoder Composite: video PHY, it generates NTSC/PAL signals.
 
 (6) Display Parallel Interface: video PHY.
 
@@ -40,9 +40,9 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 
 (10) Secondary Memory Interface: fast parallel interface to external memory chips; can be used as video PHY.
 
-(11) ISP (?): logic to convert bayer images to RGB or YUV, and correcting lens artifacts.
+(11) Image Sensor Pipeline: hw logic to convert bayer images to RGB or YUV, and correcting lens artifacts.
 
-(12) VCE (?): logic to assist the video codec hardware blocks.
+(12) Video Codec Engine: hw logic to assist the video codec hardware blocks.
 
 (13) Power management and frequency scaling.
 
