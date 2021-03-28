@@ -24,7 +24,7 @@ finally chdir to your local copy of this repo and
 
 `nix-build -f . arm6.bootdir`
 
-This will download and build the toolchain and the firmware. After completion you'll find the folder 'result',  copy its contents on the SD card,
+This will download and build the toolchain and the firmware. After completion copy `result` folder's contents on the SD card,
 move the SD card to your RPi and boot!
 
 For more info about installing and building Metal-Pi see the [install file](INSTALL.md).
