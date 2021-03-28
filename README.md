@@ -16,8 +16,11 @@ First you need to install Nix:
 
 `curl -L https://nixos.org/nix/install | sh`
 
-This will create the Nix's store at /nix and setup the command line utility in your path. Then you need to download a copy of this repo,
-chdir to your local copy of this repo and
+This will create the Nix's store at /nix and setup the command line utility in your path. Then you need to download a copy of this repo
+
+`git clone --recurse-submodules https://github.com/mfp20/metalpi.git`
+
+finally chdir to your local copy of this repo and
 
 `nix-build -f . arm6.bootdir`
 
