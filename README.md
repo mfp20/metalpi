@@ -8,6 +8,7 @@ The Broadcom silicon is a [VideoCore4 GPU](https://en.wikipedia.org/wiki/VideoCo
 
 **Metal-Pi** is a bare metal development platform for all Raspberry Pi models. It is an extension of [Kristina Brooks's `rpi-open-firmware`](https://github.com/christinaa/rpi-open-firmware). It is tailored by developers for developers: headless (but video output can be enabled), using the gpu (ie: 2 VPUs and 12 QPUs) for real time applications and general purpose computing (GPGPU).
 
+This repository is an umbrella to glue together the differnt parts of the project.
 
 ## Quick-start
 
@@ -28,20 +29,15 @@ For more info about installing and building Metal-Pi see the [install file](INST
 
 ## Technical Details
 
-Metal-Pi is a libre replacement for the stock `bootcode.bin` normally loaded from the SD card. This repo includes:
+This repository includes:
 
 - A (messy) [collection of docs](docs/) found around the net,
 - [Nix](https://nixos.org/)-based [scripts](nix/) to setup the toolchain and build the default distribution,
-- [libvc4](include/libvc4) static library made of Broadcom's headers and some glue code.
-- the libre firmware to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads.
-
-The firmware is split into two parts:
- 1. [vc4boot](src/vc4boot): initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads VPU0 payload, which in turn loads VPU1 payload. Then ARM is initialized, the embedded bootloader is mapped to ARM address `0x0`, and `armload` is executed.
- 2. [armload](src/armload): the ARM second-stage chainloader initializes the eMMC controller and accesses the FAT boot partition. From here, it chainloads other payloads like the Linux kernel, Micropython or any other custom payload.
+- the [VC4 libre firmware](https://github.com/mfp20/vc4-firmware) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads.
 
 Additionally, the build process will download/build the default payloads and an helper library:
-- [littlekernel](https://github.com/littlekernel/lk) running on VPU0,
-- [GPIOd](include/gpiod) running on VPU1,
+- a VC4 version of [littlekernel](https://github.com/littlekernel/lk) running on VPU0,
+- the [VC4 GPIOd](include/gpiod) running on VPU1,
 - [TinyCore Linux](http://www.tinycorelinux.net/) running on the ARM core,
 - [libmetalpi](include/libmetalpi) C++ helper library, built as a static library to be linked against your code.
 
