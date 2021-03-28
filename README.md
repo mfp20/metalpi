@@ -31,7 +31,6 @@ For more info about installing and building Metal-Pi see the [install file](INST
 
 This repository includes:
 
-- A (messy) [collection of docs](docs/) found around the net,
 - [Nix](https://nixos.org/)-based [scripts](nix/) to setup the toolchain and build the default distribution,
 - the [VC4 libre firmware](https://github.com/mfp20/vc4-firmware) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads.
 
