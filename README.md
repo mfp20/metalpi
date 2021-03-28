@@ -47,8 +47,8 @@ See the [status file](STATUS.md) for more info about current features.
 
 ## License, credits, contacts, contributing
 
-All Broadcom headers are licensed under 3-Clause BSD License while our code is under GPLv2+. See [LICENSE](LICENSE) for more information. Various external projects are mirrored under a mix of GPL-compatible licenses.
-
 Metal-Pi is the result of many people's work. For details see the [authors file](AUTHORS.md).
+
+Our code is under GPLv2+, see [LICENSE](LICENSE) for more information. Various external projects are mirrored under a mix of GPL-compatible licenses. Broadcom's code is licensed under 3-Clause BSD License.
 
 **Please [contact us](CONTRIBUTING.md) before randomly hacking on the codebase.**
