@@ -8,7 +8,7 @@ The Broadcom silicon is a [VideoCore4 GPU](https://en.wikipedia.org/wiki/VideoCo
 
 **Metal-Pi** is a bare metal development platform for all Raspberry Pi models. It is an extension of [Kristina Brooks's `rpi-open-firmware`](https://github.com/christinaa/rpi-open-firmware) and [Michael Bishop's `rpi-open-firmware`](https://github.com/librerpi/rpi-open-firmware). It is tailored by developers for developers: headless (but video output can be enabled), using the gpu (ie: 2 VPUs and 12 QPUs) for real time applications and general purpose computing (GPGPU).
 
-This repository is an umbrella to glue together the differnt parts of the project.
+This repository is the umbrella project packing all the different parts of the project.
 
 ## Quick-start
 
