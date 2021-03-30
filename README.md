@@ -2,13 +2,13 @@
 
 # Raspberry Pi bare metal development platform
 
-Factory Raspberry Pi is defined as "low-cost, high performance, desktop computer" or "personal computer" or "single board computer". With a few exceptions (Compute Module and Pico), it is made to hook a monitor, keyboard and mouse, and give a graphical interface to the users. In time it has been successfully used for many different electronic projects (motion control, radio, lightning) but its use in electronics was limited in software because of the different scope.
+Factory Raspberry Pi is defined as "low-cost, high performance, desktop computer" or "personal computer" or "single board computer". With a few exceptions (ie: Compute Module and Pico), it is made to hook a monitor, keyboard and mouse, and give a graphical interface to the users. In time it has been successfully used for many different electronic projects (motion control, radio, lightning) but its use in electronics was limited in software because of the different scope.
 
 The Broadcom silicon is a [VideoCore4 GPU](https://en.wikipedia.org/wiki/VideoCore) made of VPUs (general purpose cores), QPUs (vector cores), and an ARM CPU. Factory firmware focuses on desktop use, giving to the users the chance to load Linux on the ARM cpu and keeping the GPU for maintenance and video output, using a closed source ThreadX operating system running in the background on the VPUs. This setup limits both the real time performance and the general purpose GPU computing (GPGPU). By replacing ThreadX with an open source alternative, users are able to fully exploit RPi hardware, turning any RPi in a "low-cost, high performance, electronics power house": Metal-Pi.
 
 **Metal-Pi** is a bare metal development platform for all Raspberry Pi models. It is an extension of [Kristina Brooks's `rpi-open-firmware`](https://github.com/christinaa/rpi-open-firmware) and [Michael Bishop's `rpi-open-firmware`](https://github.com/librerpi/rpi-open-firmware). It is tailored by developers for developers: headless (but video output can be enabled), using the gpu (ie: 2 VPUs and 12 QPUs) for real time applications and general purpose computing (GPGPU).
 
-This repository is an umbrella to glue together the differnt parts of the project.
+This repository is the umbrella project packing all the different parts of the project.
 
 ## Quick-start
 
@@ -48,7 +48,7 @@ See the [status file](STATUS.md) for more info about current features.
 
 ## Documentation
 
-Each submodules includes a `docs` folder with its own documentation.
+Each submodule includes a `docs` folder with its own documentation.
 
 
 ## Credits, license, contacts

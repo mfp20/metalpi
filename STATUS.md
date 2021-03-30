@@ -28,7 +28,7 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 
 (4) Pixel Valve: takes video timing information, generates the hsync/vsync pulses, and throttles the flow of pixels from the HVS FIFO to the output PHY.
 
-(5) VEC: video PHY, it generates NTSC/PAL signals.
+(5) Video Encoder Composite: video PHY, it generates NTSC/PAL signals.
 
 (6) Display Parallel Interface: video PHY.
 
@@ -40,13 +40,13 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 
 (10) Secondary Memory Interface: fast parallel interface to external memory chips; can be used as video PHY.
 
-(11) ISP???
+(11) Image Sensor Pipeline: hw logic to convert bayer images to RGB or YUV, and correcting lens artifacts.
 
-(12) VCE (?): small processor to assist the video codec hardware blocks.
+(12) Video Codec Engine: hw logic to assist the video codec hardware blocks.
 
-(13) Power management and frequency scaling
+(13) Power management and frequency scaling.
 
-(14) CLOCK???
+(14) Timing generation in the SoC. [Details and a nice diagram](https://elinux.org/The_Undocumented_Pi#Clocks).
 
 (15) ARM core and ARM-accessible peripherals
 
@@ -85,5 +85,6 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 |USB|yes|yes|yes|yes|yes|USB-host works, USB-device might work|
 |Ethernet|NA|yes|yes|yes|yes|built-in usb ethernet|
 |WiFi|no|no|no|no|no||
-|Create/run LK thread on VPU0|no|no|no|no|no||
+|Create/start/stop/destroy LK threads on VPU0|no|no|no|no|no||
 |Manage gpiod|no|no|no|no|no||
+|GPGPU on QPUs|no|no|no|no|no||
