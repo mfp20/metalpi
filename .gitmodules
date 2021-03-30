@@ -14,3 +14,6 @@
 [submodule "libmetalpi"]
 	path = libmetalpi
 	url = https://github.com/mfp20/metalpi-lib.git
+[submodule "vc4-toolchain"]
+	path = vc4-toolchain
+	url = https://github.com/mfp20/vc4-toolchain.git
