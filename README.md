@@ -35,15 +35,15 @@ For more info about installing and building Metal-Pi see the [install file](INST
 This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all the submodules needed to setup the toolchain and build the default distribution.
 
 The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
-- the [VC4 bare metal library](https://github.com/mfp20/vc4-lib) to access VC4 hardware,
+- the [VC4 C bare metal library](https://github.com/mfp20/vc4-lib) to use VC4 hardware,
 - the [VC4 libre firmware](https://github.com/mfp20/vc4-firmware) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads,
 - the [VC4 version](https://github.com/mfp20/vc4-lk) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0,
 - the [VC4 GPIOd](https://github.com/mfp20/vc4-gpiod) running on VPU1,
-- the [Metal-Pi library](https://github.com/mfp20/metalpi-lib) C++ helper library, built as a static library,
+- the [Metal-Pi C++ helper library](https://github.com/mfp20/metalpi-lib) to use the Metal-Pi platform,
 - the [Metal-Pi Linux tools](https://github.com/mfp20/metalpi-tools) linux command line tools,
-- the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running on the ARM core.
+- the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running headless on the ARM core.
 
-The result is intended to be a ready to use platform but, being 100% open source, any of these components can be replaced, and the firmware itself can be modified to fit your own needs.
+The result is intended to be a ready to use platform but, being 100% open source, any of these components can be replaced, and the firmware itself can be modified to fit your own needs. A config file in the output directory (ie: SD card content) is used to tweak run time options.
 
 See the [status file](STATUS.md) for more info about current features.
 
