@@ -1,5 +1,3 @@
-[submodule "tools/vc4-toolchain"]
-	url = https://github.com/mfp20/vc4-toolchain.git
 [submodule "vc4-firmware"]
 	path = vc4-firmware
 	url = https://github.com/mfp20/vc4-firmware.git
@@ -9,11 +7,12 @@
 [submodule "vc4-gpiod"]
 	path = vc4-gpiod
 	url = https://github.com/mfp20/vc4-gpiod.git
-[submodule "lib"]
-	url = https://github.com/mfp20/metalpi-lib.git
 [submodule "libmetalpi"]
 	path = libmetalpi
 	url = https://github.com/mfp20/metalpi-lib.git
 [submodule "vc4-toolchain"]
 	path = vc4-toolchain
 	url = https://github.com/mfp20/vc4-toolchain.git
+[submodule "tools"]
+	path = tools
+	url = https://github.com/mfp20/metalpi-tools.git
