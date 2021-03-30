@@ -12,3 +12,6 @@
 	url = https://github.com/mfp20/vc4-gpiod.git
 [submodule "lib"]
 	url = https://github.com/mfp20/metalpi-lib.git
+[submodule "libmetalpi"]
+	path = libmetalpi
+	url = https://github.com/mfp20/metalpi-lib.git
