@@ -1,5 +1,5 @@
 
-In order to build the default distribution the quickstart in the README is enough. In the case you are willing to customize the code you'll need to build the vc4-toolchain as well as the arm-none-eabi toolchain.
+In order to build the default distribution the quickstart in the README is enough. In the case you are willing to customize the code you'll need to build the vc4-toolchain as well as the arm-none-eabi toolchain. Then `make` is used to build the components.
 
 ## Build vc4 toolchain
 
