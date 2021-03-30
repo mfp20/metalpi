@@ -18,3 +18,4 @@
 	url = https://github.com/mfp20/metalpi-tools.git
 [submodule "libvc4"]
 	url = https://github.com/mfp20/vc4-lib.git
+	path = libvc4
