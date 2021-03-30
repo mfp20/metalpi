@@ -80,7 +80,7 @@ https://paulwratt.github.io/rpi-internal-registers-online/index.html
 0x7ee0_0000                                             SD_BASE from sdc_ctrl.h (dram control)
 0x7ee0_1000                                             L2_BASE from l2_cache_ctrl.h
 0x7ee0_2000                                             L1_BASE from vpu_l1_cache_ctrl.h
-0x7ee0_2100                                             D0CACHE_BASE from hardware_vc4.h
+0x7ee0_2100                                             D0CACHE_BASE from broadcom.h
 0x7ee0_5000                                             DMA15_BASE
 0x7ee0_8000                                             APERF1_BASE from axi_performance1.h
 
