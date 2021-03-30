@@ -1,5 +1,4 @@
 [submodule "tools/vc4-toolchain"]
-	path = vc4-toolchain
 	url = https://github.com/mfp20/vc4-toolchain.git
 [submodule "vc4-firmware"]
 	path = vc4-firmware
