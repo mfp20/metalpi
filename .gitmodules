@@ -11,5 +11,4 @@
 	path = vc4-gpiod
 	url = https://github.com/mfp20/vc4-gpiod.git
 [submodule "lib"]
-	path = lib
 	url = https://github.com/mfp20/metalpi-lib.git
