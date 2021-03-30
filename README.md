@@ -8,7 +8,10 @@ The Broadcom silicon is a [VideoCore4 GPU](https://en.wikipedia.org/wiki/VideoCo
 
 **Metal-Pi** is a bare metal development platform for all Raspberry Pi models. It is an extension of [Kristina Brooks's `rpi-open-firmware`](https://github.com/christinaa/rpi-open-firmware) and [Michael Bishop's `rpi-open-firmware`](https://github.com/librerpi/rpi-open-firmware). It is tailored by developers for developers: headless (but video output can be enabled), using the gpu (ie: 2 VPUs and 12 QPUs) for real time applications and general purpose computing (GPGPU).
 
-This repository is the umbrella project packing all the different parts of the project.
+This repository is the umbrella project packing all the different parts of the project. The build process produces an example platform but, being 100% open source, any of these components can be replaced, and the firmware itself can be modified to fit your own needs.
+
+See the [status file](STATUS.md) for more info about current features.
+
 
 ## Quick-start
 
@@ -43,9 +46,7 @@ The build process will download, build and pack a ready to use folder to be copi
 - the [Metal-Pi Linux tools](https://github.com/mfp20/metalpi-tools) linux command line tools,
 - the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running headless on the ARM core.
 
-The result is intended to be a ready to use platform but, being 100% open source, any of these components can be replaced, and the firmware itself can be modified to fit your own needs. A config file in the output directory (ie: SD card content) is used to tweak run time options.
-
-See the [status file](STATUS.md) for more info about current features.
+A config file in the output directory (ie: SD card content) is used to tweak the run time options.
 
 
 ## Documentation
