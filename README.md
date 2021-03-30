@@ -46,6 +46,8 @@ The build process will download, build and pack a ready to use folder to be copi
 - the [Metal-Pi Linux tools](https://github.com/mfp20/metalpi-tools) linux command line tools,
 - the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running headless on the ARM core.
 
+![Metal-Pi parts](docs/metalpi_parts.png)
+
 A config file in the output directory (ie: SD card content) is used to tweak the run time options.
 
 
