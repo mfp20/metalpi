@@ -2,10 +2,10 @@
 CFLAGS_BASE=-Iinclude -Wall -g -ffunction-sections
 CFLAGS_ARM=-mtune=arm1176jzf-s -march=armv6zk
 CFLAGS_ARM_FPU=-mfpu=vfp -mfloat-abi=softfp
-OBJS=crc32.o
+OBJS=crc32.o tlsf.o
 
 ifeq (${BAREMETAL},1)
-  OBJS+=hardware.o console.o tlsf.o
+  OBJS+=hardware.o console.o
   CFLAGS=${CFLAGS_BASE} -nostdlib -nostartfiles -ffreestanding -DBAREMETAL
   CFLAGS_ARM+=-mthumb ${CFLAGS_ARM_FPU}
 else

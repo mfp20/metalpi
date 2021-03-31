@@ -50,3 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# misc
+vc4-toolchain/build/
+vc4-toolchain/prefix/
