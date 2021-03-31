@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "uart.h"
-#include "pll_read.h"
-#include "aux.h"
+#include <core/broadcom/uart.h>
+#include <core/pll_read.h>
+#include <drivers/uart_aux.h>
 
 #define AUXXENG *((volatile uint32_t*)(0x7E215004))
 #define AUX_MU_IO_REG  *((volatile uint32_t*)(0x7E215040))
@@ -35,7 +35,7 @@ static int uart_write(struct uart_device *uart, const char *str, int length) {
   return length;
 }
 
-void aux_uart_init(uint32_t baud) {
+static void aux_uart_init(uint32_t baud) {
   uint32_t freq = get_vpu_per_freq();
   AUXXENG = 1;
   AUX_MU_IIR_REG = 0;
@@ -57,3 +57,4 @@ void setup_aux_uart(uint32_t baud) {
   aux_fd = stdout = funopen(&aux_uart, 0, uart_write, 0, 0);
   setvbuf(stdout, 0, _IONBF, 0);
 }
+

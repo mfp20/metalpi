@@ -47,3 +47,4 @@ void PEStartPlatform(struct OtpInfo *info) {
   /* Start ARM */
   gArmControl.start(info);
 }
+

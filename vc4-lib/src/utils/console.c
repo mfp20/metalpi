@@ -1,15 +1,13 @@
 
 #include <stdint.h>
-#include <stdio.h>
-#include <core.h>
-#include <console.h>
+#include <utils/console.h>
 
 /*----------------------------------------------*/
 /* Put a character                              */
 /*----------------------------------------------*/
 
 int putchar (int c) {
-  pl011_putchar(c);
+	putchar_ptr(c);
 }
 
 /*----------------------------------------------*/

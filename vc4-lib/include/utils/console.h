@@ -1,4 +1,10 @@
 // Universal string handler for user console interface  (C)ChaN, 2011
+//
+// use putchar_ptr to hook the console to an hardware device
+// example for pl011 uart having void pl011_putchar(unsigned char c):
+//		putchar_ptr = pl011_putchar;
+
+#pragma once
 
 #include <stdint.h>
 
@@ -17,12 +23,13 @@
 #define DW_SHORT	sizeof(short)
 #define DW_LONG		sizeof(long)
 
+void (*putchar_ptr)(unsigned char c);
+
 int putchar (int c);
 int __puts(const char *s);
 int puts (const char* str);
 int vprintf (const char *fmt, va_list arp);
 int printf (const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-//void uart_putc(unsigned int ch);
 void put_dump (const void* buff, unsigned long addr, int len, int width);
 
 #endif

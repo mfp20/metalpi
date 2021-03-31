@@ -17,7 +17,9 @@ Crappy C++ runtime.
 
 =============================================================================*/
 
+
 #include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <core.h>
 #include <runtime.h>
