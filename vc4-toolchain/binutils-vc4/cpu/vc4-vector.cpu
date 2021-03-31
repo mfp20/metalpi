@@ -1,0 +1,1313 @@
+;; Hardware elements
+
+(define-hardware
+  (name h-eltsize)
+  (comment "Vector element size for mem op")
+  (type immediate UQI)
+  (values keyword ""
+    (("8" 0)
+     ("16" 1)
+     ("32" 2)
+     ("unk" 3)))
+)
+
+;; Fields in 80-bit vector insns.
+
+; Data operations: fields in first 16-bit word (bits 15-0).
+
+(df f-op15-10 "Opcode bits 15-10" () 15 6 UINT #f #f)
+(df f-op9 "Opcode bit 9" () 9 1 UINT #f #f)
+(df f-op8-3 "Opcode bits 8-3" () 8 6 UINT #f #f)
+(df f-op2-0 "Opcode bits 2-0" () 2 3 UINT #f #f)
+
+; Memory operations: fields in first 16-bit word.
+
+(df f-op4-3 "Opcode bits 4-3" () 4 2 UINT #f #f)
+
+; Fields in second 16-bit word (bits 31-16).
+
+(df2 f-op31-22 "Opcode bits 31-22" () 16 16 15 10 UINT (#f) (#f))
+(df2 f-op31-28 "Opcode bits 31-28" () 16 16 15 4 UINT (#f) (#f))
+(df2 f-op31-29 "Opcode bits 31-29" () 16 16 15 3 UINT (#f) (#f))
+(df2 f-op28 "Opcode bit 28" () 16 16 12 1 UINT (#f) (#f))
+(df2 f-op27-22 "Opcode bits 27-22" () 16 16 11 6 UINT (#f) (#f))
+
+; "A" register field is split over two 16-bit words.
+
+;(df2 f-op21-16 "Opcode bits 21-16" () 16 16 5 6 UINT (#f) (#f))
+
+(df2 f-op21-19 "Opcode bits 21-19" () 16 16 5 3 UINT (#f) (#f))
+(df2 f-op21-18 "Opcode bits 21-18" () 16 16 5 4 UINT (#f) (#f))
+(df2 f-op18 "Opcode bit 18" () 16 16 2 1 UINT (#f) (#f))
+(df2 f-op17-16 "Opcode bits 17-16" () 16 16 1 2 UINT (#f) (#f))
+
+; Fields in third 16-bit word (bits 47-32).
+
+; ALU
+
+(df2 f-op37-32 "Opcode bits 37-32" () 32 16 5 6 UINT (#f) (#f))
+(df2 f-op38 "Opcode bit 38" () 32 16 6 1 UINT (#f) (#f))
+(df2 f-op41-32 "Opcode bits 41-32" () 32 16 9 10 UINT (#f) (#f))
+(df2 f-op42 "Opcode bit 42" () 32 16 10 1 UINT (#f) (#f))
+(df2 f-op43 "Opcode bit 43" () 32 16 11 1 UINT (#f) (#f))
+(df2 f-op47-44 "Opcode bits 47-44" () 32 16 15 4 UINT (#f) (#f))
+
+; memory
+
+(df2 f-op38-32 "Opcode bits 38-32" () 32 16 6 7 UINT (#f) (#f))
+(df2 f-op41-39 "Opcode bits 41-39" () 32 16 9 3 UINT (#f) (#f))
+(df2 f-op41-38 "Opcode bits 41-38" () 32 16 9 4 UINT (#f) (#f))
+
+; Fields in fourth 16-bit word (bits 63-48).
+
+(df2 f-op51-48 "Opcode bits 51-48" () 48 16 3 4 UINT (#f) (#f))
+(df2 f-op57-52 "Opcode bits 57-52" () 48 16 9 6 UINT (#f) (#f))
+(df2 f-op63-58 "Opcode bits 63-58" () 48 16 15 6 UINT (#f) (#f))
+
+; Fields in fifth 16-bit word (bits 79-64).
+
+; ALU
+
+(df2 f-op69-64 "Opcode bits 69-64" () 64 16 5 6 UINT (#f) (#f))
+(df2 f-op76-70 "Opcode bits 76-70" () 64 16 12 7 UINT (#f) (#f))
+(df2 f-op79-77 "Opcode bits 79-77" () 64 16 15 3 UINT (#f) (#f))
+
+; memory
+
+(df2 f-op65-64 "Opcode bits 65-64" () 64 16 1 2 UINT (#f) (#f))
+(df2 f-op69-66 "Opcode bits 69-66" () 64 16 5 4 UINT (#f) (#f))
+
+(define-pmacro opsvec
+  ((MOV 2)     (BITPLANES 2) (EVEN 3)    (ODD 3)
+   (INTERL 3)  (INTERH 3)    (BITREV 3)  (ROR 3)
+   (SHL 3)     (SHLS 3)      (LSR 3)     (ASR 3)
+   (SIGNSHL 3) (OP13 3)      (SIGNASL 3) (SIGNASLS 3)
+   (AND 3)     (OR 3)        (EOR 3)     (BIC 3)
+   (COUNT 3)   (MSB 3)       (OP22 3)    (OP23 3)
+   (MIN 3)     (MAX 3)       (DIST 3)    (DISTS 3)
+   (CLIP 3)    (SIGN 3)      (CLIPS 3)   (TESTMAG 3)
+   (ADD 3)     (ADDS 3)      (ADDC 3)    (ADDSC 3)
+   (SUB 3)     (SUBS 3)      (SUBC 3)    (SUBSC 3)
+   (RSUB 3)    (RSUBS 3)     (RSUBC 3)   (RSUBSC 3)
+   (OP44 3)    (OP45 3)      (OP46 3)    (OP47 3))
+)
+
+(define-normal-insn-enum
+  insn-vecops "Vector ops (< 48)" () VECOP_ f-op8-3
+  (.map .car opsvec)
+)
+
+(define-normal-insn-enum
+  insn-vecmemops "Vector memory ops" () VMEMOP_ f-op9-5
+  (LD LOOKUPM LOOKUPML MEM03 ST INDEXWRITEM INDEXWRITEML MEM07
+   MEMREAD MEMWRITE MEM10 MEM11 MEM12 MEM13 MEM14 MEM15
+   MEM16 MEM17 MEM18 MEM19 MEM20 MEM21 MEM22 MEM23
+   GETACC MEM25 MEM26 MEM27 MEM28 MEM29 MEM30 MEM31)
+)
+
+(define-pmacro genmemops
+  (
+   ;LD LOOKUPM LOOKUPML
+   MEM03
+   ;ST INDEXWRITEM INDEXWRITEML
+   MEM07
+   MEMREAD MEMWRITE MEM10 MEM11 MEM12 MEM13 MEM14 MEM15
+   MEM16 MEM17 MEM18 MEM19 MEM20 MEM21 MEM22 MEM23
+   ;GETACC
+   MEM25 MEM26 MEM27 MEM28 MEM29 MEM30 MEM31)
+)
+
+(define-pmacro mulopsx0vec
+  ((MULL SS)   (MULLS SS)  (MULM SS)  (MULMS SS)
+   (MULHD SS)  (MULHD SU)  (MULHD US) (MULHD UU)
+   (MULHN SS)  (MULHN SU)  (MULHN US) (MULHN UU)
+   (MULHDT SS) (MULHDT SU) (OP62 "0") (OP63 "0"))
+)
+
+(define-pmacro mulopsx1vec
+  ((OP48 "1") (OP49 "1") (OP50 "1") (OP51 "1")
+   (MUL32 SS) (MUL32 SU) (MUL32 US) (MUL32 UU)
+   (OP56 "1") (OP57 "1") (OP58 "1") (OP59 "1")
+   (OP60 "1") (OP61 "1") (OP62 "1") (OP63 "1"))
+)
+
+(define-normal-insn-enum
+  insn-memwidth "Vector memory op width" () VMEMWIDTH_ f-op4-3
+  ("8" "16" "32" "unk")
+)
+
+(define-normal-insn-enum
+  insn-memsat "Vector memory op saturation" () VMEMSAT_ f-op4-3
+  ("" "s32" "unk" "s16")
+)
+
+(define-normal-insn-enum
+  insn-mulop "Multiply operations" () VMULXOP_ f-op8-3
+  ((MULLSS 48)   (OP481 48)
+   (MULLSSS 49)  (OP491 49)
+   (MULMSS 50)   (OP501 50)
+   (MULMSSS 51)  (OP511 51)
+   (MULHDSS 52)  (MUL32SS 52)
+   (MULHDSU 53)  (MUL32SU 53)
+   (MULHDUS 54)  (MUL32US 54)
+   (MULHDUU 55)  (MUL32UU 55)
+   (MULHNSS 56)  (OP561 56)
+   (MULHNSU 57)  (OP571 57)
+   (MULHNUS 58)  (OP581 58)
+   (MULHNUU 59)  (OP591 59)
+   (MULHDTSS 60) (OP601 60)
+   (MULHDTSU 61) (OP611 61)
+   (OP620 62)    (OP621 62)
+   (OP630 63)    (OP631 63))
+)
+
+(define-normal-insn-enum
+  insn-sreg "SREG setting for 48-bit ops" () SREG_ f-op2-0
+  (R0 R1 R2 R3 R4 R5 R6 R7)
+)
+
+(define-normal-insn-enum
+  insn-vec48dir "Vector direction bit for 48-bit ops" () VECDIR_ f-op28
+  (H V)
+)
+
+(define-multi-ifield
+  (name f-vec80dreg)
+  (comment "16-bit specifier for D operand")
+  (attrs)
+  (mode UINT)
+  ; Total of 10+6 = 16 bits.
+  (subfields f-op31-22 f-op63-58)
+  (insert (sequence ()
+            (set (ifield f-op31-22) (and (ifield f-vec80dreg) 1023))
+            (set (ifield f-op63-58) (and (srl (ifield f-vec80dreg) 10) 63))))
+  (extract (sequence ()
+             (set (ifield f-vec80dreg)
+                  (or (ifield f-op31-22)
+                      (sll (ifield f-op63-58) 10)))))
+)
+
+; The "a" (coordinate) part of the operand is split between:
+;  * word 1 (6 bits, 21-16)
+;  * word 2 (4 bits, 47-44)
+; The high-order bits of the 10-bit value (i.e. bits 9-4) go in the first of
+; these, and the low-order bits (3-0) go in the second.
+
+(define-multi-ifield
+  (name f-vec80areg)
+  (comment "20-bit specifier for A operand")
+  (attrs)
+  (mode UINT)
+  ; Total of 6+4+6+4 = 20 bits.
+  (subfields f-op21-16 f-op47-44 f-op57-52 f-op51-48)
+  (insert (sequence ()
+            (set (ifield f-op47-44) (and (ifield f-vec80areg) 15))
+            (set (ifield f-op21-16) (and (srl (ifield f-vec80areg) 4) 63))
+            (set (ifield f-op57-52) (and (srl (ifield f-vec80areg) 10) 63))
+            (set (ifield f-op51-48) (and (srl (ifield f-vec80areg) 16) 15))))
+  (extract (sequence ()
+             (set (ifield f-vec80areg)
+                  (or (ifield f-op47-44)
+                      (or (sll (ifield f-op21-16) 4)
+                          (or (sll (ifield f-op57-52) 10)
+                              (sll (ifield f-op51-48) 16)))))))
+)
+
+(define-multi-ifield
+  (name f-vec80breg)
+  (comment "16-bit specifier for B operand")
+  (attrs)
+  (mode UINT)
+  ; Total of 10+6 = 16 bits.
+  (subfields f-op41-32 f-op69-64)
+  (insert (sequence ()
+            (set (ifield f-op41-32) (and (ifield f-vec80breg) 1023))
+            (set (ifield f-op69-64) (and (srl (ifield f-vec80breg) 10) 63))))
+  (extract (sequence ()
+             (set (ifield f-vec80breg)
+                  (or (ifield f-op41-32)
+                      (sll (ifield f-op69-64) 10)))))
+)
+
+(define-multi-ifield
+  (name f-vec80mods)
+  (comment "modifier fields for vector ALU insns")
+  (attrs)
+  (mode UINT)
+  ; total of 3+1+3+7 = 14 bits.
+  (subfields f-op2-0 f-op43 f-op79-77 f-op76-70)
+  (insert (sequence ()
+            (set (ifield f-op2-0) (and (ifield f-vec80mods) 7))
+            (set (ifield f-op43) (and (srl (ifield f-vec80mods) 3) 1))
+            (set (ifield f-op79-77) (and (srl (ifield f-vec80mods) 4) 7))
+            (set (ifield f-op76-70) (and (srl (ifield f-vec80mods) 7) 127))))
+  (extract (sequence ()
+             (set (ifield f-vec80mods)
+                  (or (ifield f-op2-0)
+                      (or (sll (ifield f-op43) 3)
+                          (or (sll (ifield f-op79-77) 4)
+                              (sll (ifield f-op76-70) 7)))))))
+)
+
+(define-multi-ifield
+  (name f-vec80mods-mem)
+  (comment "modifier fields for vector memory insns")
+  (attrs)
+  (mode UINT)
+  ; total of 3+1+3 = 7 bits.
+  (subfields f-op2-0 f-op43 f-op79-77)
+  (insert (sequence ()
+            (set (ifield f-op2-0) (and (ifield f-vec80mods-mem) 7))
+            (set (ifield f-op43) (and (srl (ifield f-vec80mods-mem) 3) 1))
+            (set (ifield f-op79-77) (and (srl (ifield f-vec80mods-mem) 4) 7))))
+  (extract (sequence ()
+             (set (ifield f-vec80mods-mem)
+                  (or (ifield f-op2-0)
+                      (or (sll (ifield f-op43) 3)
+                          (sll (ifield f-op79-77) 4))))))
+)
+
+(define-multi-ifield
+  (name f-vec80imm)
+  (comment "immediate for 80-bit vector ALU insns")
+  (attrs)
+  (mode UINT)
+  (subfields f-op69-64 f-op41-32)
+  (insert (sequence ()
+            (set (ifield f-op41-32) (and (ifield f-vec80imm) #x3ff))
+            (set (ifield f-op69-64) (and (srl (ifield f-vec80imm) 10) #x3f))))
+  (extract (sequence ()
+             (set (ifield f-vec80imm)
+                  (or (ifield f-op41-32)
+                      (sll (ifield f-op69-64) 10)))))
+)
+
+; 16 imm bits:
+;   f-op38-32 (l, imm[6:0])
+;   f-op65-64 (i, imm[8:7])
+;   f-op76-70 (i, imm[15:9])
+; 6 ra bits:
+;   f-op57-52 (f_a[5:0])
+; 4 rs bits:
+;   f-op69-66
+
+(define-multi-ifield
+  (name f-vec80ldaddr)
+  (comment "address for 80-bit vld instruction")
+  (attrs)
+  (mode UINT)
+  ; Total of 7+2+7+6+4=26 bits.
+  (subfields f-op38-32 f-op65-64 f-op76-70 f-op57-52 f-op69-66)
+  (insert (sequence ()
+            (set (ifield f-op38-32) (and (ifield f-vec80ldaddr) #x7f))
+            (set (ifield f-op65-64) (and (srl (ifield f-vec80ldaddr) 7) 3))
+            (set (ifield f-op76-70) (and (srl (ifield f-vec80ldaddr) 9) #x7f))
+            (set (ifield f-op57-52) (and (srl (ifield f-vec80ldaddr) 16) 63))
+            (set (ifield f-op69-66) (and (srl (ifield f-vec80ldaddr) 22) 15))))
+  (extract (sequence ()
+             (set (ifield f-vec80ldaddr)
+                  (or (ifield f-op38-32)
+                      (or (sll (ifield f-op65-64) 7)
+                          (or (sll (ifield f-op76-70) 9)
+                              (or (sll (ifield f-op57-52) 16)
+                                  (sll (ifield f-op69-66) 22))))))))
+)
+
+; 16 imm bits:
+;   f-op38-32 (l, imm[6:0])
+;   f-op65-64 (i, imm[8:7])
+;   f-op76-70 (i, imm[15:9])
+; 6 rd bits:
+;   f-op63-58 (f_d[5:0])
+; 4 rs bits:
+;   f-op69-66
+
+(define-multi-ifield
+  (name f-vec80staddr)
+  (comment "address for 80-bit vst instruction")
+  (attrs)
+  (mode UINT)
+  ; Total of 7+2+7+6+4=26 bits.
+  (subfields f-op38-32 f-op65-64 f-op76-70 f-op63-58 f-op69-66)
+  (insert (sequence ()
+            (set (ifield f-op38-32) (and (ifield f-vec80staddr) #x7f))
+            (set (ifield f-op65-64) (and (srl (ifield f-vec80staddr) 7) 3))
+            (set (ifield f-op76-70) (and (srl (ifield f-vec80staddr) 9) #x7f))
+            (set (ifield f-op63-58) (and (srl (ifield f-vec80staddr) 16) 63))
+            (set (ifield f-op69-66) (and (srl (ifield f-vec80staddr) 22) 15))))
+  (extract (sequence ()
+             (set (ifield f-vec80staddr)
+                  (or (ifield f-op38-32)
+                      (or (sll (ifield f-op65-64) 7)
+                          (or (sll (ifield f-op76-70) 9)
+                              (or (sll (ifield f-op63-58) 16)
+                                  (sll (ifield f-op69-66) 22))))))))
+)
+
+(define-multi-ifield
+  (name f-dummyabits)
+  (comment "unknown/extra A-operand bits for vld instruction")
+  (attrs)
+  (mode UINT)
+  ; Total of 4+4+2=10 bits
+  (subfields f-op51-48 f-op47-44 f-op17-16)
+  (insert (sequence ()
+            (set (ifield f-op47-44) (and (ifield f-dummyabits) 15))
+            (set (ifield f-op17-16) (and (srl (ifield f-dummyabits) 4) 3))
+            (set (ifield f-op51-48) (and (srl (ifield f-dummyabits) 6) 15))))
+  (extract (sequence ()
+             (set (ifield f-dummyabits)
+                  (or (ifield f-op47-44)
+                      (or (sll (ifield f-op17-16) 4)
+                          (sll (ifield f-op51-48) 6))))))
+)
+
+(define-multi-ifield
+  (name f-vec48dreg)
+  (comment "9-bit specifier for D operand, 48-bit")
+  (attrs)
+  (mode UINT)
+  ; total of 3(+1)+6=9 bits. Gap in the middle.
+  (subfields f-op31-29 f-op27-22)
+  (insert (sequence ()
+            (set (ifield f-op27-22) (and (ifield f-vec48dreg) 63))
+            (set (ifield f-op31-29) (and (srl (ifield f-vec48dreg) 7) 7))))
+  (extract (sequence ()
+             (set (ifield f-vec48dreg)
+                  (or (ifield f-op27-22)
+                      (sll (ifield f-op31-29) 7)))))
+)
+
+(define-multi-ifield
+  (name f-vec48areg)
+  (comment "9-bit specifier for A operand, 48-bit")
+  (attrs)
+  (mode UINT)
+  ; total of 3(+1)+2+4 = 9 bits. Gap in the middle.
+  (subfields f-op21-19 f-op17-16 f-op47-44)
+  (insert (sequence ()
+            (set (ifield f-op47-44) (and (ifield f-vec48areg) 15))
+            (set (ifield f-op17-16) (and (srl (ifield f-vec48areg) 4) 3))
+            (set (ifield f-op21-19) (and (srl (ifield f-vec48areg) 7) 7))))
+  (extract (sequence ()
+             (set (ifield f-vec48areg)
+                  (or (ifield f-op47-44)
+                      (or (sll (ifield f-op17-16) 4)
+                          (sll (ifield f-op21-19) 7))))))
+)
+
+(define-multi-ifield
+  (name f-vec48breg)
+  (comment "9-bit specifier for B operand, 48-bit")
+  (attrs)
+  (mode UINT)
+  ; total of 3(+1)+6 = 9 bits. Gap in the middle.
+  (subfields f-op41-39 f-op37-32)
+  (insert (sequence ()
+            (set (ifield f-op37-32) (and (ifield f-vec48breg) 63))
+            (set (ifield f-op41-39) (and (srl (ifield f-vec48breg) 7) 7))))
+  (extract (sequence ()
+             (set (ifield f-vec48breg)
+                  (or (ifield f-op37-32)
+                      (sll (ifield f-op41-39) 7)))))
+)
+
+(define-operand
+  (name v80d32reg)
+  (comment "vector dest register, 80-bit ALU insn")
+  (attrs)
+  (type h-uint)
+  (index f-vec80dreg)
+  (handlers (parse "vec80aludreg") (print "vec80aludreg"))
+)
+
+(define-operand
+  (name v80a32reg)
+  (comment "vector A register, 80-bit ALU insn")
+  (attrs)
+  (type h-uint)
+  (index f-vec80areg)
+  (handlers (parse "vec80aluareg") (print "vec80aluareg"))
+)
+
+(define-operand
+  (name v80b32reg)
+  (comment "vector B register, 80-bit ALU insn")
+  (attrs)
+  (type h-uint)
+  (index f-vec80breg)
+  (handlers (parse "vec80alubreg") (print "vec80alubreg"))
+)
+
+(define-operand
+  (name v80imm)
+  (comment "vector immediate, 80-bit ALU insn")
+  (attrs)
+  (type h-sint)
+  (index f-vec80imm)
+  (handlers (parse "imm16"))
+)
+
+(define-operand
+  (name v80mods)
+  (comment "modifier bits for 80-bit vector ALU insn")
+  (attrs)
+  (type h-uint)
+  (index f-vec80mods)
+  (handlers (parse "vec80mods") (print "vec80mods"))
+)
+
+(define-operand
+  (name v80mods_mem)
+  (comment "modifier bits for 80-bit vector memory insns")
+  (attrs)
+  (type h-uint)
+  (index f-vec80mods-mem)
+  (handlers (parse "vec80mods_mem") (print "vec80mods"))
+)
+
+(define-operand
+  (name setf_mod)
+  (comment "SETF modifier only for 48-bit data ops")
+  (attrs)
+  (type h-uint)
+  (index f-op38)
+  (handlers (parse "vec48mod_setf") (print "vec48mod_setf"))
+)
+
+(define-operand
+  (name v48imm_mods)
+  (comment "SETF/predicate modifiers")
+  (attrs)
+  (type h-uint)
+  (index f-op41-38)
+  (handlers (parse "vec48imm_mods") (print "vec48imm_mods"))
+)
+
+(define-operand
+  (name vmemwidth)
+  (comment "element width for memory operation")
+  (attrs)
+  (type h-eltsize)
+  (index f-op4-3)
+)
+
+(define-operand
+  (name vec_ldaddr)
+  (comment "address for 80-bit vld instruction")
+  (attrs)
+  (type h-uint)
+  (index f-vec80ldaddr)
+  (handlers (parse "vec80ldaddr") (print "vec80ldaddr"))
+)
+
+(define-operand
+  (name vec_staddr)
+  (comment "address for 80-bit vst instruction")
+  (attrs)
+  (type h-uint)
+  (index f-vec80staddr)
+  (handlers (parse "vec80staddr") (print "vec80staddr"))
+)
+
+(define-operand
+  (name dummyabits)
+  (comment "extra/unknown A-operand bits for vld instructions")
+  (attrs)
+  (type h-uint)
+  (index f-dummyabits)
+  (handlers (parse "dummy") (print "extraldstbits"))
+)
+
+(define-operand
+  (name dummydbits)
+  (comment "extra/unknown D-operand bits for vst instructions")
+  (attrs)
+  (type h-uint)
+  (index f-op27-22)
+  (handlers (parse "dummy") (print "extraldstbits"))
+)
+
+(define-operand
+  (name v48sclr)
+  (comment "scalar reg B-operand for 48-bit data ops")
+  (attrs)
+  (type h-uint)
+  (index f-op37-32)
+  (handlers (parse "vec48sclr") (print "vec48sclr"))
+)
+
+(define-operand
+  (name v48imm)
+  (comment "immediate B-operand for 48-bit data ops")
+  (attrs)
+  (type h-uint)
+  (index f-op37-32)
+  (handlers (parse "uimm6"))
+)
+
+(define-pmacro (mkv48dreg x-dir)
+  (define-operand
+    (name (.sym v48dreg_ x-dir))
+    (comment (.str "vector " (.upcase x-dir) " dest register, 48-bit ALU insn"))
+    (attrs)
+    (type h-uint)
+    (index f-vec48dreg)
+    (handlers (parse (.str "vec48aludreg_" x-dir))
+              (print (.str "vec48aludreg_" x-dir))))
+)
+
+(mkv48dreg h)
+(mkv48dreg v)
+
+(define-pmacro (mkv48areg x-dir)
+  (define-operand
+    (name (.sym v48areg_ x-dir))
+    (comment (.str "vector " (.upcase x-dir) " A register, 48-bit ALU insn"))
+    (attrs)
+    (type h-uint)
+    (index f-vec48areg)
+    (handlers (parse (.str "vec48aluareg_" x-dir))
+              (print (.str "vec48aluareg_" x-dir))))
+)
+
+(mkv48areg h)
+(mkv48areg v)
+
+(define-pmacro (mkv48breg x-dir)
+  (define-operand
+    (name (.sym v48breg_ x-dir))
+    (comment (.str "vector " (.upcase x-dir) " B register, 48-bit ALU insn"))
+    (attrs)
+    (type h-uint)
+    (index f-vec48breg)
+    (handlers (parse (.str "vec48alubreg_" x-dir))
+              (print (.str "vec48alubreg_" x-dir))))
+)
+
+(mkv48breg h)
+(mkv48breg v)
+
+(define-pmacro (mkdplus_reg x-regno)
+  (define-operand
+    (name (.sym dplus_sr x-regno))
+    (comment (.str "Add r" x-regno " for 48-bit D operand"))
+    (attrs)
+    (type h-uint)
+    (index f-op43)
+    (handlers (parse (.str "plus_sr" x-regno))
+              (print (.str "plus_sr" x-regno))))
+)
+
+(define-pmacro (mkaplus_reg x-regno)
+  (define-operand
+    (name (.sym aplus_sr x-regno))
+    (comment (.str "Add r" x-regno " for 48-bit A operand"))
+    (attrs)
+    (type h-uint)
+    (index f-op18)
+    (handlers (parse (.str "plus_sr" x-regno))
+              (print (.str "plus_sr" x-regno))))
+)
+
+(define-pmacro (mkbplus_reg x-regno)
+  (define-operand
+    (name (.sym bplus_sr x-regno))
+    (comment (.str "Add r" x-regno " for 48-bit B operand"))
+    (attrs)
+    (type h-uint)
+    (index f-op38)
+    (handlers (parse (.str "plus_sr" x-regno))
+              (print (.str "plus_sr" x-regno))))
+)
+
+(.for-each (.pmacro (x-regno)
+           (.begin
+             (.exec (mkdplus_reg x-regno))
+             (.exec (mkaplus_reg x-regno))
+             (.exec (mkbplus_reg x-regno))))
+           (.iota 8)
+)
+
+;;;;;;;;;;;;;;;;;;
+;;              ;;
+;; 48-bit insns ;;
+;;              ;;
+;;;;;;;;;;;;;;;;;;
+
+; <op> vec,vec,sclr
+
+(define-pmacro (vsclrdataop48_3 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48s x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48S" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48sclr$setf_mod")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir) v48sclr
+       (f-op41-39 7) (f-op42 0) (.sym dplus_s x-sreg) (.sym aplus_s x-sreg)
+       setf_mod)
+    () ())
+)
+
+; <op> vec,sclr
+
+(define-pmacro (vsclrdataop48_2 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48s x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48S" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48sclr$setf_mod")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (f-op21-19 7) (f-op17-16 0) (f-op47-44 0)
+       v48sclr (f-op41-39 7) (f-op42 0) (.sym dplus_s x-sreg) (f-op18 0)
+       setf_mod)
+    () ())
+)
+
+; <op> vec,vec,vec
+
+(define-pmacro (vecdataop48_3 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48v x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48V" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48breg_" x-dir "$bplus_s"
+          x-sreg)
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir)
+       (.sym v48breg_ x-dir) (f-op42 0) (.sym dplus_s x-sreg)
+       (.sym aplus_s x-sreg) (.sym bplus_s x-sreg))
+    () ())
+)
+
+; <op> vec,vec
+
+(define-pmacro (vecdataop48_2 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48v x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48V" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48breg_" x-dir "$bplus_s" x-sreg)
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (f-op21-19 7) (f-op17-16 0) (f-op47-44 0)
+       (.sym v48breg_ x-dir) (f-op42 0) (.sym dplus_s x-sreg)
+       (f-op18 0) (.sym bplus_s x-sreg))
+    () ())
+)
+
+; <op> vec,vec,imm
+
+(define-pmacro (vimmdataop48_3 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48i x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48I" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48imm$v48imm_mods")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir)
+       v48imm (f-op42 1) (.sym dplus_s x-sreg) (.sym aplus_s x-sreg)
+       v48imm_mods)
+    () ())
+)
+
+; <op> vec,imm
+
+(define-pmacro (vimmdataop48_2 x-width x-name x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) x-dir d48i x-width x-sreg)
+    (.str x-name (.upcase x-dir) "D48I" x-width (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-name) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48imm$v48imm_mods")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VECOP_ x-name)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (f-op21-19 7) (f-op17-16 0) (f-op47-44 0)
+       v48imm (f-op42 1) (.sym dplus_s x-sreg) (f-op18 0) v48imm_mods)
+    () ())
+)
+
+; This is kind of unfortunate in that it produces rather a large number of
+; physical instructions, but never mind.
+
+(define-pmacro (mkvecdataops48 x-boptype x-width x-xflag x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.for-each
+        (.pmacro (x-opname x-numops)
+          (.if (.eq x-numops 3)
+            (.exec ((.sym x-boptype dataop48_3) x-width x-opname x-xflag x-dir
+                                                x-sreg))
+            (.exec ((.sym x-boptype dataop48_2) x-width x-opname x-xflag x-dir
+                                                x-sreg))))
+        (.map .car opsvec)
+        (.map .cadr opsvec)))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkvecdataops48 vsclr 32 1 h)
+(mkvecdataops48 vsclr 32 1 v)
+(mkvecdataops48 vsclr 16 0 h)
+(mkvecdataops48 vsclr 16 0 v)
+
+(mkvecdataops48 vec 32 1 h)
+(mkvecdataops48 vec 32 1 v)
+(mkvecdataops48 vec 16 0 h)
+(mkvecdataops48 vec 16 0 v)
+
+(mkvecdataops48 vimm 32 1 h)
+(mkvecdataops48 vimm 32 1 v)
+(mkvecdataops48 vimm 16 0 h)
+(mkvecdataops48 vimm 16 0 v)
+
+; <mulop> vec,vec,sclr [SETF]
+
+(define-pmacro (vsclrmulop48 x-name x-signs x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) (.downcase x-signs) x-dir d48s x-sreg)
+    (.str x-name x-signs (.upcase x-dir) "D48S" (.upcase x-sreg)) ()
+    (.str "v" (.downcase x-name) "." (.downcase x-signs)
+          " $v48dreg_" x-dir "$dplus_s" x-sreg ",$v48areg_" x-dir "$aplus_s"
+          x-sreg ",$v48sclr$setf_mod")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VMULXOP_ x-name x-signs)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir)
+       v48sclr (f-op42 0) (.sym dplus_s x-sreg) (.sym aplus_s x-sreg)
+       (f-op41-39 7) setf_mod)
+    () ())
+)
+
+; <mulop> vec,vec,vec
+
+(define-pmacro (vecmulop48 x-name x-signs x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) (.downcase x-signs) x-dir d48v x-sreg)
+    (.str x-name x-signs (.upcase x-dir) "D48V" (.upcase x-sreg)) ()
+    (.str "v" (.downcase x-name) "." (.downcase x-signs)
+          " $v48dreg_" x-dir "$dplus_s" x-sreg ",$v48areg_" x-dir "$aplus_s"
+          x-sreg ",$v48breg_" x-dir "$bplus_s" x-sreg)
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VMULXOP_ x-name x-signs)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir)
+       (.sym v48breg_ x-dir) (f-op42 0) (.sym dplus_s x-sreg)
+       (.sym aplus_s x-sreg) (.sym bplus_s x-sreg))
+    () ())
+)
+
+; <mulop> vec,vec,imm [setf] [ifxx]
+
+(define-pmacro (vimmmulop48 x-name x-signs x-xflag x-dir x-sreg)
+  (define-normal-insn
+    (.sym (.downcase x-name) (.downcase x-signs) x-dir d48i x-sreg)
+    (.str x-name x-signs (.upcase x-dir) "D48I" (.upcase x-sreg)) ()
+    (.str "v" (.downcase x-name) "." (.downcase x-signs)
+          " $v48dreg_" x-dir "$dplus_s" x-sreg ",$v48areg_" x-dir "$aplus_s"
+          x-sreg ",$v48imm$v48imm_mods")
+    (+ (f-op15-10 61) (f-op9 x-xflag) (.sym VMULXOP_ x-name x-signs)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir)
+       (.sym VECDIR_ (.upcase x-dir)) (.sym v48areg_ x-dir)
+       v48imm (f-op42 1) (.sym dplus_s x-sreg) (.sym aplus_s x-sreg)
+       v48imm_mods)
+    () ())
+)
+
+(define-pmacro (mkvecmulops48 x-boptype x-xflag x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.for-each
+        (.pmacro (x-opname x-signs)
+          (.exec ((.sym x-boptype mulop48) x-opname x-signs x-xflag x-dir
+                                           x-sreg)))
+        (.map .car (.sym mulopsx x-xflag vec))
+        (.map .cadr (.sym mulopsx x-xflag vec))))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkvecmulops48 vsclr 0 h)
+(mkvecmulops48 vsclr 0 v)
+(mkvecmulops48 vsclr 1 h)
+(mkvecmulops48 vsclr 1 v)
+
+(mkvecmulops48 vec 0 h)
+(mkvecmulops48 vec 0 v)
+(mkvecmulops48 vec 1 h)
+(mkvecmulops48 vec 1 v)
+
+(mkvecmulops48 vimm 0 h)
+(mkvecmulops48 vimm 0 v)
+(mkvecmulops48 vimm 1 h)
+(mkvecmulops48 vimm 1 v)
+
+; 48-bit vld variants, encoding - for hidden A operand.
+
+(define-pmacro (vld48insn x-op x-width x-dir x-sreg)
+  (define-normal-insn
+    (.sym v x-width x-op x-dir x-sreg)
+    (.str "V" x-width (.upcase x-op) (.upcase x-dir) (.upcase x-sreg)) ()
+    (.str "v" x-width x-op " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",($v48sclr)$setf_mod")
+    (+ (f-op15-10 60) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       (.sym SREG_ (.upcase x-sreg)) (.sym VECDIR_ (.upcase x-dir))
+       (.sym v48dreg_ x-dir) (.sym dplus_s x-sreg)
+       (f-op21-18 14) (f-op17-16 0) (f-op47-44 0) (f-op41-39 7) (f-op42 0)
+       v48sclr setf_mod)
+    () ())
+)
+
+(define-pmacro (mkld48op x-op x-width x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.exec (vld48insn x-op x-width x-dir x-sreg)))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkld48op ld 8 h)
+(mkld48op ld 8 v)
+(mkld48op ld 16 h)
+(mkld48op ld 16 v)
+(mkld48op ld 32 h)
+(mkld48op ld 32 v)
+(mkld48op ld unk h)
+(mkld48op ld unk v)
+
+(mkld48op lookupm 8 h)
+(mkld48op lookupm 8 v)
+(mkld48op lookupm 16 h)
+(mkld48op lookupm 16 v)
+(mkld48op lookupm 32 h)
+(mkld48op lookupm 32 v)
+(mkld48op lookupm unk h)
+(mkld48op lookupm unk v)
+
+(mkld48op lookupml 8 h)
+(mkld48op lookupml 8 v)
+(mkld48op lookupml 16 h)
+(mkld48op lookupml 16 v)
+(mkld48op lookupml 32 h)
+(mkld48op lookupml 32 v)
+(mkld48op lookupml unk h)
+(mkld48op lookupml unk v)
+
+; 48-bit store variants, omitted D operand.
+
+(define-pmacro (vst48insn x-op x-width x-dir x-sreg)
+  (define-normal-insn
+    (.sym v x-width x-op x-dir x-sreg)
+    (.str "V" x-width (.upcase x-op) (.upcase x-dir) (.upcase x-sreg)) ()
+    (.str "v" x-width x-op " $v48areg_" x-dir "$aplus_s" x-sreg
+          ",($v48sclr)$setf_mod")
+    (+ (f-op15-10 60) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       (.sym SREG_ (.upcase x-sreg)) (.sym VECDIR_ (.upcase x-dir))
+       (f-op31-29 7) (f-op27-22 0)
+       (.sym v48areg_ x-dir) (.sym aplus_s x-sreg) (f-op41-39 7) (f-op42 0)
+       (f-op43 0) v48sclr setf_mod)
+    () ())
+)
+
+(define-pmacro (mkst48op x-op x-width x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.exec (vst48insn x-op x-width x-dir x-sreg)))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkst48op st 8 h)
+(mkst48op st 8 v)
+(mkst48op st 16 h)
+(mkst48op st 16 v)
+(mkst48op st 32 h)
+(mkst48op st 32 v)
+(mkst48op st unk h)
+(mkst48op st unk v)
+
+(mkst48op indexwritem 8 h)
+(mkst48op indexwritem 8 v)
+(mkst48op indexwritem 16 h)
+(mkst48op indexwritem 16 v)
+(mkst48op indexwritem 32 h)
+(mkst48op indexwritem 32 v)
+(mkst48op indexwritem unk h)
+(mkst48op indexwritem unk v)
+
+(mkst48op indexwriteml 8 h)
+(mkst48op indexwriteml 8 v)
+(mkst48op indexwriteml 16 h)
+(mkst48op indexwriteml 16 v)
+(mkst48op indexwriteml 32 h)
+(mkst48op indexwriteml 32 v)
+(mkst48op indexwriteml unk h)
+(mkst48op indexwriteml unk v)
+
+(define-pmacro (vgenmem48insn x-op x-width x-dir x-sreg)
+  (define-normal-insn
+    (.sym v x-width (.downcase x-op) x-dir 48gen x-sreg)
+    (.str "V" x-width (.upcase x-op) (.upcase x-dir) 48GEN (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-op) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48breg_" x-dir "$bplus_s"
+          x-sreg)
+    (+ (f-op15-10 60) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir) (.sym v48areg_ x-dir)
+       (.sym v48breg_ x-dir) (.sym VECDIR_ (.upcase x-dir)) (f-op42 0)
+       (.sym dplus_s x-sreg) (.sym aplus_s x-sreg) (.sym bplus_s x-sreg))
+    () ())
+)
+
+(define-pmacro (mkgenmem48ops x-width x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.for-each
+        (.pmacro (x-opname)
+                 (.exec (vgenmem48insn x-opname x-width x-dir x-sreg)))
+        genmemops))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkgenmem48ops 8 h)
+(mkgenmem48ops 8 v)
+(mkgenmem48ops 16 h)
+(mkgenmem48ops 16 v)
+(mkgenmem48ops 32 h)
+(mkgenmem48ops 32 v)
+(mkgenmem48ops unk h)
+(mkgenmem48ops unk v)
+
+(define-pmacro (vgetacc48insn x-sat x-dir x-sreg)
+  (define-normal-insn
+    (.sym vgetacc48 x-sat x-dir x-sreg)
+    (.str "VGETACC48" (.upcase x-sat) (.upcase x-dir) (.upcase x-sreg)) ()
+    (.str "vgetacc" x-sat " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48breg_" x-dir "$bplus_s"
+          x-sreg)
+    (+ (f-op15-10 60) VMEMOP_GETACC (.sym VMEMSAT_ x-sat)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir) (.sym v48areg_ x-dir)
+       (.sym v48breg_ x-dir) (.sym VECDIR_ (.upcase x-dir)) (f-op42 0)
+       (.sym dplus_s x-sreg) (.sym aplus_s x-sreg) (.sym bplus_s x-sreg))
+    () ())
+)
+
+(define-pmacro (mkgetacc48ops x-sat x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.exec (vgetacc48insn x-sat x-dir x-sreg)))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkgetacc48ops "" h)
+(mkgetacc48ops "" v)
+(mkgetacc48ops "s32" h)
+(mkgetacc48ops "s32" v)
+(mkgetacc48ops "unk" h)
+(mkgetacc48ops "unk" v)
+(mkgetacc48ops "s16" h)
+(mkgetacc48ops "s16" v)
+
+(define-pmacro (vgenmemi48insn x-op x-width x-dir x-sreg)
+  (define-normal-insn
+    (.sym v x-width (.downcase x-op) x-dir 48geni x-sreg)
+    (.str "V" x-width (.upcase x-op) (.upcase x-dir) 48GENI (.upcase x-sreg)) ()
+    (.str "v" x-width (.downcase x-op) " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48imm$v48imm_mods")
+    (+ (f-op15-10 60) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir) (.sym v48areg_ x-dir)
+       v48imm (.sym VECDIR_ (.upcase x-dir)) (f-op42 1)
+       (.sym dplus_s x-sreg) (.sym aplus_s x-sreg) v48imm_mods)
+    () ())
+)
+
+(define-pmacro (mkgenmemi48ops x-width x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.for-each
+        (.pmacro (x-opname)
+                 (.exec (vgenmemi48insn x-opname x-width x-dir x-sreg)))
+        genmemops))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkgenmemi48ops 8 h)
+(mkgenmemi48ops 8 v)
+(mkgenmemi48ops 16 h)
+(mkgenmemi48ops 16 v)
+(mkgenmemi48ops 32 h)
+(mkgenmemi48ops 32 v)
+(mkgenmemi48ops unk h)
+(mkgenmemi48ops unk v)
+
+(define-pmacro (vgetacci48insn x-sat x-dir x-sreg)
+  (define-normal-insn
+    (.sym vgetacci48 x-sat x-dir x-sreg)
+    (.str "VGETACCI" (.upcase x-sat) (.upcase x-dir) (.upcase x-sreg)) ()
+    (.str "vgetacc" x-sat " $v48dreg_" x-dir "$dplus_s" x-sreg
+          ",$v48areg_" x-dir "$aplus_s" x-sreg ",$v48imm$v48imm_mods")
+    (+ (f-op15-10 60) VMEMOP_GETACC (.sym VMEMSAT_ x-sat)
+       (.sym SREG_ (.upcase x-sreg)) (.sym v48dreg_ x-dir) (.sym v48areg_ x-dir)
+       v48imm (.sym VECDIR_ (.upcase x-dir)) (f-op42 1)
+       (.sym dplus_s x-sreg) (.sym aplus_s x-sreg) v48imm_mods)
+    () ())
+)
+
+(define-pmacro (mkgetacci48ops x-sat x-dir)
+  (.for-each
+    (.pmacro (x-sreg)
+      (.exec (vgetacci48insn x-sat x-dir x-sreg)))
+    (r0 r1 r2 r3 r4 r5 r6 r7))
+)
+
+(mkgetacci48ops "" h)
+(mkgetacci48ops "" v)
+(mkgetacci48ops "s32" h)
+(mkgetacci48ops "s32" v)
+(mkgetacci48ops "unk" h)
+(mkgetacci48ops "unk" v)
+(mkgetacci48ops "s16" h)
+(mkgetacci48ops "s16" v)
+
+;;;;;;;;;;;;;;;;;;
+;;              ;;
+;; 80-bit insns ;;
+;;              ;;
+;;;;;;;;;;;;;;;;;;
+
+; For most 80-vector 3-register ops.
+
+(define-pmacro (vecdataop80_3 x-width x-name x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) d80v x-width) (.str x-name "D80V" x-width) ()
+    (.str "v" x-width (.downcase x-name)
+      " $v80d32reg,$v80a32reg,$v80b32reg$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VECOP_ (.upcase x-name))
+       v80mods v80d32reg v80a32reg (f-op42 0) v80b32reg)
+    () ())
+)
+
+; For "vmov" and other insns that omit the A operand (which is encoded as "-").
+; Note this doesn't use the f-vec80breg multi-ifield because that doesn't work
+; right with CGEN yet.
+
+(define-pmacro (vecdataop80_2 x-width x-name x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) d80v x-width) (.str x-name "D80V" x-width) ()
+    (.str "v" x-width (.downcase x-name) " $v80d32reg,$v80b32reg$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VECOP_ (.upcase x-name))
+       v80mods v80d32reg (f-op21-16 56) (f-op47-44 0) (f-op57-52 60)
+       (f-op51-48 0) (f-op42 0) v80b32reg)
+    () ())
+)
+
+(define-pmacro (mkvecdataops80 x-width x-xflag)
+  (.for-each (.pmacro (x-opname x-numops)
+               (.if (.eq x-numops 3)
+                 (.exec (vecdataop80_3 x-width x-opname x-xflag))
+                 (.exec (vecdataop80_2 x-width x-opname x-xflag))))
+             (.map .car opsvec)
+             (.map .cadr opsvec))
+)
+
+(mkvecdataops80 32 1)
+(mkvecdataops80 16 0)
+
+(define-pmacro (vecmulop80 x-name x-signs x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) (.downcase x-signs) d80v)
+    (.str x-name x-signs "D80V") ()
+    (.str "v" (.downcase x-name) "." (.downcase x-signs)
+      " $v80d32reg,$v80a32reg,$v80b32reg$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VMULXOP_ x-name x-signs)
+       v80mods v80d32reg v80a32reg (f-op42 0) v80b32reg)
+    () ())
+)
+
+(define-pmacro (mkvecmulops80 x-xflag)
+  (.for-each (.pmacro (x-opname x-signs)
+               (.exec (vecmulop80 x-opname x-signs x-xflag)))
+             (.map .car (.sym mulopsx x-xflag vec))
+             (.map .cadr (.sym mulopsx x-xflag vec)))
+)
+
+(mkvecmulops80 0)
+(mkvecmulops80 1)
+
+; For most 80-vector 3-operand/immediate ops.
+
+(define-pmacro (vecdataopi80_3 x-width x-name x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) d80i x-width) (.str x-name "D80I" x-width) ()
+    (.str "v" x-width (.downcase x-name)
+      " $v80d32reg,$v80a32reg,$v80imm$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VECOP_ (.upcase x-name))
+       v80mods v80d32reg v80a32reg (f-op42 1) v80imm)
+    () ())
+)
+
+; For immediate ops with omitted A operand.
+
+(define-pmacro (vecdataopi80_2 x-width x-name x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) d80i x-width) (.str x-name "D80I" x-width) ()
+    (.str "v" x-width (.downcase x-name) " $v80d32reg,$v80imm$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VECOP_ (.upcase x-name))
+       v80mods v80d32reg (f-op21-16 56) (f-op47-44 0) (f-op57-52 60)
+       (f-op51-48 0) (f-op42 1) v80imm)
+    () ())
+)
+
+(define-pmacro (mkvecdataopis80 x-width x-xflag)
+  (.for-each (.pmacro (x-opname x-numops)
+               (.if (.eq x-numops 3)
+                 (.exec (vecdataopi80_3 x-width x-opname x-xflag))
+                 (.exec (vecdataopi80_2 x-width x-opname x-xflag))))
+             (.map .car opsvec)
+             (.map .cadr opsvec))
+)
+
+(mkvecdataopis80 32 1)
+(mkvecdataopis80 16 0)
+
+(define-pmacro (vecmulopi80 x-name x-signs x-xflag)
+  (define-normal-insn
+    (.sym (.downcase x-name) (.downcase x-signs) d80i)
+    (.str x-name x-signs "D80I") ()
+    (.str "v" (.downcase x-name) "." (.downcase x-signs)
+      " $v80d32reg,$v80a32reg,$v80imm$v80mods")
+    (+ (f-op15-10 63) (f-op9 x-xflag) (.sym VMULXOP_ x-name x-signs)
+       v80mods v80d32reg v80a32reg (f-op42 1) v80imm)
+    () ())
+)
+
+(define-pmacro (mkvecmulopis80 x-xflag)
+  (.for-each (.pmacro (x-opname x-signs)
+               (.exec (vecmulopi80 x-opname x-signs x-xflag)))
+             (.map .car (.sym mulopsx x-xflag vec))
+             (.map .cadr (.sym mulopsx x-xflag vec)))
+)
+
+(mkvecmulopis80 0)
+(mkvecmulopis80 1)
+
+(define-pmacro (vldinsn x-op x-width)
+  (define-normal-insn
+    (.sym v x-width x-op) (.str "V" x-width (.upcase x-op)) ()
+    (.str "v" x-width x-op " $v80d32reg,($vec_ldaddr)$v80mods_mem$dummyabits")
+    (+ (f-op15-10 62) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       v80mods_mem v80d32reg (f-op21-18 14) (f-op42 0) (f-op41-39 7)
+       vec_ldaddr dummyabits)
+       ;(f-op51-48 0) (f-op57-52 0)
+    () ())
+)
+
+(vldinsn ld 8)
+(vldinsn ld 16)
+(vldinsn ld 32)
+(vldinsn ld unk)
+
+(vldinsn lookupm 8)
+(vldinsn lookupm 16)
+(vldinsn lookupm 32)
+(vldinsn lookupm unk)
+
+(vldinsn lookupml 8)
+(vldinsn lookupml 16)
+(vldinsn lookupml 32)
+(vldinsn lookupml unk)
+
+(define-pmacro (vstinsn x-op x-width)
+  (define-normal-insn
+    (.sym v x-width x-op) (.str "V" x-width (.upcase x-op)) ()
+    (.str "v" x-width x-op " $v80a32reg,($vec_staddr)$v80mods_mem$dummydbits")
+    (+ (f-op15-10 62) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       v80mods_mem v80a32reg (f-op31-28 14) (f-op42 0) (f-op41-39 7)
+       vec_staddr dummydbits)
+       ;(f-op63-58 0)
+    () ())
+)
+
+(vstinsn st 8)
+(vstinsn st 16)
+(vstinsn st 32)
+(vstinsn st unk)
+
+(vstinsn indexwritem 8)
+(vstinsn indexwritem 16)
+(vstinsn indexwritem 32)
+(vstinsn indexwritem unk)
+
+(vstinsn indexwriteml 8)
+(vstinsn indexwriteml 16)
+(vstinsn indexwriteml 32)
+(vstinsn indexwriteml unk)
+
+(define-pmacro (vgenmeminsn x-op x-width)
+  (define-normal-insn
+    (.sym v x-width (.downcase x-op) gen) (.str "V" x-width (.upcase x-op)) ()
+    (.str "v" x-width (.downcase x-op)
+          " $v80d32reg,$v80a32reg,$v80b32reg$v80mods")
+    (+ (f-op15-10 62) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       v80mods v80d32reg v80a32reg v80b32reg (f-op42 0))
+    () ())
+)
+
+(define-pmacro (mkgenmemops x-width)
+  (.for-each (.pmacro (x-opname) (.exec (vgenmeminsn x-opname x-width)))
+             genmemops)
+)
+
+(mkgenmemops 8)
+(mkgenmemops 16)
+(mkgenmemops 32)
+(mkgenmemops unk)
+
+(define-pmacro (vgetaccinsn x-sat)
+  (define-normal-insn
+    (.sym vgetacc x-sat) (.str "VGETACC" (.upcase x-sat)) ()
+    (.str "vgetacc" x-sat
+          " $v80d32reg,$v80a32reg,$v80b32reg$v80mods")
+    (+ (f-op15-10 62) VMEMOP_GETACC (.sym VMEMSAT_ x-sat)
+       v80mods v80d32reg v80a32reg v80b32reg (f-op42 0))
+    () ())
+)
+
+(vgetaccinsn "")
+(vgetaccinsn "s32")
+(vgetaccinsn "unk")
+(vgetaccinsn "s16")
+
+(define-pmacro (vgenmemiinsn x-op x-width)
+  (define-normal-insn
+    (.sym v x-width (.downcase x-op) igen)
+    (.str "V" x-width (.upcase x-op) "I") ()
+    (.str "v" x-width (.downcase x-op)
+          " $v80d32reg,$v80a32reg,$v80imm$v80mods")
+    (+ (f-op15-10 62) (.sym VMEMOP_ (.upcase x-op)) (.sym VMEMWIDTH_ x-width)
+       v80mods v80d32reg v80a32reg v80imm (f-op42 1))
+    () ())
+)
+
+(define-pmacro (mkgenmemiops x-width)
+  (.for-each (.pmacro (x-opname) (.exec (vgenmemiinsn x-opname x-width)))
+             genmemops)
+)
+
+(mkgenmemiops 8)
+(mkgenmemiops 16)
+(mkgenmemiops 32)
+(mkgenmemiops unk)
+
+(define-pmacro (vgetacciinsn x-sat)
+  (define-normal-insn
+    (.sym vgetacci x-sat)
+    (.str "VGETACCI" (.upcase x-sat)) ()
+    (.str "vgetacc" x-sat
+          " $v80d32reg,$v80a32reg,$v80imm$v80mods")
+    (+ (f-op15-10 62) VMEMOP_GETACC (.sym VMEMSAT_ x-sat)
+       v80mods v80d32reg v80a32reg v80imm (f-op42 1))
+    () ())
+)
+
+(vgetacciinsn "")
+(vgetacciinsn "s32")
+(vgetacciinsn "unk")
+(vgetacciinsn "s16")

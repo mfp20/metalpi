@@ -1,0 +1,1898 @@
+/* -- opc.h */
+
+/* Most bits in the first word are variable, but we can at least hash on
+   coarse instruction types, which is better than nothing.  */
+
+#define CGEN_DIS_HASH_SIZE 8
+#define CGEN_DIS_HASH(buf, value)					\
+  ((((unsigned char *) buf)[1] & 0x80) == 0 ? 0      /* scalar16.  */	\
+   : (((unsigned char *) buf)[1] & 0xf8) == 0xf8 ? 1 /* vector80.  */	\
+   : (((unsigned char *) buf)[1] & 0xf8) == 0xf0 ? 2 /* vector48.  */	\
+   : (((unsigned char *) buf)[1] & 0xf0) == 0xe0 ? 3 /* scalar48.  */	\
+   : 4)						     /* scalar32.  */
+
+#define CGEN_ASM_HASH_SIZE 5
+
+#define CGEN_VERBOSE_ASSEMBLER_ERRORS
+
+typedef enum
+{
+  H,
+  HX,
+  HY,
+  V,
+  VX,
+  VY,
+  DASH
+} vc4_vec_dir;
+
+#define SRU_BIT  0x40
+#define ENA_BIT  0x20
+#define HIGH_BIT 0x10
+#define SIGN_BIT 0x08
+#define CLRA_BIT 0x04
+#define WBA_BIT  0x02
+#define SUB_BIT  0x01
+
+typedef enum
+{
+  OP_D,
+  OP_A,
+  OP_B
+} vc4_operand;
+
+/* -- asm.c */
+
+#include <errno.h>
+
+union floatbits {
+  float f;
+  uint32_t u;
+};
+
+static const char *
+parse_floatimm6 (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+		 const char **strp,
+		 int opindex ATTRIBUTE_UNUSED,
+		 unsigned long *valuep)
+{
+  const char *startptr;
+  char *endptr;
+  union floatbits val;
+  unsigned int exponent, signbit, mantissa;
+
+  if (**strp == '#')
+    (*strp)++;
+
+  startptr = *strp;
+
+  errno = 0;
+  val.f = (float) strtod (startptr, &endptr);
+
+  if (errno != 0)
+    goto err_out;
+
+  signbit = (val.u & 0x80000000) ? 1 : 0;
+  exponent = (val.u >> 23) & 0xff;
+  mantissa = val.u & 0x7fffff;
+
+  if (exponent >= 124 && exponent < 132
+      && (mantissa & 0x1fffff) == 0)
+    {
+      exponent -= 124;
+      *valuep = (signbit << 5) | (exponent << 2) | (mantissa >> 21);
+      *strp = endptr;
+      return NULL;
+    }
+
+err_out:
+  return "Bad floating-point immediate";
+}
+
+static const char *
+parse_shifted_uimm (CGEN_CPU_DESC cd, const char **strp, int opindex,
+		    unsigned long *valuep, unsigned bits, unsigned shift)
+{
+  const char *errmsg;
+  unsigned mask = (1 << shift) - 1;
+  unsigned long hi = 1 << bits;
+  enum cgen_parse_operand_result result_type;
+  unsigned long value;
+  bfd_vma result;
+
+  if (**strp == '#')
+    (*strp)++;
+
+  /* Ambiguity resolution: (rN++) looks like adding an expression "+", which
+     fails to parse as an address.  */
+  if (**strp == '+')
+    return "post-inc";
+
+  errmsg = cgen_parse_address (cd, strp, opindex, BFD_RELOC_NONE, &result_type,
+                               &result);
+
+  if (errmsg)
+    return errmsg;
+
+  if (result_type != CGEN_PARSE_OPERAND_RESULT_NUMBER)
+    return "use wider reloc";
+
+  value = result;
+
+  if (!errmsg && ((value & mask) != 0 || (value >> shift) >= hi))
+    errmsg = "out-of-range immediate";
+  else
+    *valuep = value;
+
+  return errmsg;
+}
+
+static const char *
+parse_uimm6 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+	     unsigned long *valuep)
+{
+  return parse_shifted_uimm (cd, strp, opindex, valuep, 6, 0);
+}
+
+static const char *
+parse_uimm5 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+	     unsigned long *valuep)
+{
+  return parse_shifted_uimm (cd, strp, opindex, valuep, 5, 0);
+}
+
+static const char *
+parse_uimm4_shl2 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+		  unsigned long *valuep)
+{
+  return parse_shifted_uimm (cd, strp, opindex, valuep, 4, 2);
+}
+
+static const char *
+parse_uimm5_shl2 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+		  unsigned long *valuep)
+{
+  return parse_shifted_uimm (cd, strp, opindex, valuep, 5, 2);
+}
+
+static const char *
+parse_uimm5_shl3 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+		  unsigned long *valuep)
+{
+  return parse_shifted_uimm (cd, strp, opindex, valuep, 5, 3);
+}
+
+static const char *
+parse_shifted_imm (CGEN_CPU_DESC cd, const char **strp, int opindex,
+		   long *valuep, unsigned bits, unsigned shift)
+{
+  const char *errmsg;
+  unsigned mask = (1 << shift) - 1;
+  long lo = -(1 << (bits - 1)), hi = 1 << (bits - 1);
+  enum cgen_parse_operand_result result_type;
+  long value;
+  bfd_vma result;
+
+  if (**strp == '#')
+    (*strp)++;
+
+  /* Ambiguity resolution: (rN++) looks like adding an expression "+", which
+     fails to parse as an address.  */
+  if (**strp == '+')
+    return "post-inc";
+
+  errmsg = cgen_parse_address (cd, strp, opindex, BFD_RELOC_NONE, &result_type,
+                               &result);
+
+  if (errmsg)
+    return errmsg;
+
+  if (result_type != CGEN_PARSE_OPERAND_RESULT_NUMBER)
+    return "use wider reloc";
+
+  if (result & 0x80000000)
+    result |= ~(bfd_vma) 0xffffffff;
+
+  value = (bfd_signed_vma) result;
+
+  if (!errmsg && ((value & mask) != 0 || (value >> shift) < lo
+		  || (value >> shift) >= hi))
+    errmsg = "out-of-range immediate";
+  else
+    *valuep = value;
+
+  return errmsg;
+}
+
+#define SHIFTED_IMM_FN(B,S)						\
+  static const char *							\
+  parse_imm##B##_shl##S (CGEN_CPU_DESC cd, const char **strp,		\
+			 int opindex, long *valuep)			\
+  {									\
+    return parse_shifted_imm (cd, strp, opindex, valuep, (B), (S));	\
+  }
+
+SHIFTED_IMM_FN (6, 8)
+SHIFTED_IMM_FN (6, 7)
+SHIFTED_IMM_FN (6, 6)
+SHIFTED_IMM_FN (6, 5)
+SHIFTED_IMM_FN (6, 4)
+SHIFTED_IMM_FN (6, 3)
+SHIFTED_IMM_FN (6, 2)
+SHIFTED_IMM_FN (6, 1)
+
+SHIFTED_IMM_FN (16, 4)
+SHIFTED_IMM_FN (16, 3)
+SHIFTED_IMM_FN (16, 2)
+SHIFTED_IMM_FN (16, 1)
+
+static const char *
+parse_imm4 (CGEN_CPU_DESC cd, const char **strp, int opindex, long *valuep)
+{
+  return parse_shifted_imm (cd, strp, opindex, valuep, 4, 0);
+}
+
+static const char *
+parse_imm6 (CGEN_CPU_DESC cd, const char **strp, int opindex, long *valuep)
+{
+  return parse_shifted_imm (cd, strp, opindex, valuep, 6, 0);
+}
+
+static const char *
+parse_imm12 (CGEN_CPU_DESC cd, const char **strp, int opindex, long *valuep)
+{
+  return parse_shifted_imm (cd, strp, opindex, valuep, 12, 0);
+}
+
+static const char *
+parse_imm16 (CGEN_CPU_DESC cd, const char **strp, int opindex, long *valuep)
+{
+  return parse_shifted_imm (cd, strp, opindex, valuep, 16, 0);
+}
+
+static const char *
+parse_imm27 (CGEN_CPU_DESC cd, const char **strp, int opindex, long *valuep)
+{
+  return parse_shifted_imm (cd, strp, opindex, valuep, 27, 0);
+}
+
+static const char *
+parse_imm32 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+             unsigned long *valuep)
+{
+  const char *errmsg;
+  enum cgen_parse_operand_result result_type;
+  bfd_vma result;
+
+  if (**strp == '#')
+    (*strp)++;
+
+  errmsg = cgen_parse_address (cd, strp, opindex, BFD_RELOC_NONE, &result_type,
+                               &result);
+
+  if (errmsg)
+    return errmsg;
+
+  *valuep = (unsigned long) result;
+
+  return 0;
+}
+
+static const char *
+parse_pcrel27 (CGEN_CPU_DESC cd, const char **strp, int opindex,
+	       bfd_reloc_code_real_type code,
+	       enum cgen_parse_operand_result *result_type, bfd_vma *valuep)
+{
+  bfd_vma result;
+  const char *errmsg;
+
+  /* Instructions like "st r5,(lr)" are ambiguous since "lr" can be interpreted
+     as a bracketed symbolic name when we meant it to be parsed as a register
+     indirection.  Special-case the former to fail.  */
+  if (**strp == '(')
+    {
+      const char *s = *strp;
+
+      if (s[0] == '-' && s[1] == '-')
+        return "looks like predec";
+
+      while (ISALNUM (*++s))
+        ;
+
+      if (s[0] == '+' && s[1] == '+')
+        return "looks like postinc";
+
+      if (*s == ')')
+        return "looks like indirection";
+    }
+
+  errmsg = cgen_parse_address (cd, strp, opindex, code, result_type, &result);
+
+  if (!errmsg)
+    *valuep = result;
+
+  return errmsg;
+}
+
+static const char *
+parse_shlN (CGEN_CPU_DESC cd, const char **strp,
+            int opindex,
+            unsigned long *valuep ATTRIBUTE_UNUSED,
+            unsigned long shift)
+{
+  const char *scan = *strp;
+  bfd_boolean is_multiply = FALSE;
+  const char *errmsg;
+  unsigned long uval;
+
+  while (ISSPACE (*scan))
+    scan++;
+
+  if (strncmp (scan, "shl", 3) == 0
+      || strncmp (scan, "lsl", 3) == 0)
+    scan += 3;
+  else if (strncmp (scan, "<<", 2) == 0)
+    scan += 2;
+  else if (strncmp (scan, "*", 1) == 0)
+    {
+      scan++;
+      is_multiply = TRUE;
+    }
+  else
+    return "no left shift";
+
+  while (ISSPACE (*scan))
+    scan++;
+
+  if (!is_multiply && *scan == '#')
+    scan++;
+
+  *strp = scan;
+  errmsg = cgen_parse_unsigned_integer (cd, strp, opindex, &uval);
+
+  if (errmsg)
+    return errmsg;
+
+  if ((is_multiply && uval == (1ul << shift))
+      || (!is_multiply && uval == shift))
+    return 0;
+
+  return "wrong shift amount";
+}
+
+#define PARSE_SHLN(N)                                             \
+  static const char *                                             \
+  parse_shl##N (CGEN_CPU_DESC cd, const char **strp, int opindex, \
+                unsigned long *valuep)                            \
+  {                                                               \
+    return parse_shlN (cd, strp, opindex, valuep, (N));           \
+  }
+
+PARSE_SHLN(1)
+PARSE_SHLN(2)
+PARSE_SHLN(3)
+PARSE_SHLN(4)
+PARSE_SHLN(5)
+PARSE_SHLN(6)
+PARSE_SHLN(7)
+PARSE_SHLN(8)
+
+static const char *
+parse_unsigned_int_maybe_postinc (CGEN_CPU_DESC cd, const char **strp,
+                                  int opindex, unsigned long *valuep,
+                                  bfd_boolean *postinc_p)
+{
+  int nesting = 0;
+  char *ptr = (char *) *strp;
+  char *term = 0, saved_char;
+  const char *errmsg;
+
+  *postinc_p = FALSE;
+
+  while (*ptr != 0)
+    {
+      if (*ptr == '(')
+        nesting++;
+      else if (*ptr == ')')
+        {
+          if (nesting > 0)
+            nesting--;
+          else
+            break;
+        }
+      else if (ptr[0] == '+' && ptr[1] == '+')
+        {
+          /* We have a postinc, but cgen_parse_unsigned_integer will misparse
+             it.  Insert a zero-terminator temporarily as a workaround.  */
+          term = ptr;
+          saved_char = *ptr;
+          *ptr = 0;
+          break;
+        }
+      else if (*ptr == ',')
+        break;
+      ptr++;
+    }
+
+  errmsg = cgen_parse_unsigned_integer (cd, strp, opindex, valuep);
+  if (term)
+    *ptr = saved_char;
+  if (errmsg)
+    return errmsg;
+
+  if ((*strp)[0] == '+' && (*strp)[1] == '+')
+    {
+      (*strp) += 2;
+      *postinc_p = TRUE;
+    }
+
+  return 0;
+}
+
+static const char *
+parse_signed_int_maybe_postmod (CGEN_CPU_DESC cd, const char **strp,
+                                int opindex, long *valuep,
+                                bfd_boolean *postmod_p)
+{
+  int nesting = 0;
+  char *ptr = (char *) *strp;
+  char *term = 0, saved_char;
+  const char *errmsg;
+
+  *postmod_p = FALSE;
+
+  while (*ptr != 0)
+    {
+      if (*ptr == '(')
+        nesting++;
+      else if (*ptr == ')')
+        {
+          if (nesting > 0)
+            nesting--;
+          else
+            break;
+        }
+      else if (ptr[0] == '+' && ptr[1] == '=')
+        {
+          /* We have a postmod, but cgen_parse_signed_integer will misparse
+             it.  Insert a zero-terminator temporarily as a workaround.  */
+          term = ptr;
+          saved_char = *ptr;
+          *ptr = 0;
+          break;
+        }
+      ptr++;
+    }
+
+  errmsg = cgen_parse_signed_integer (cd, strp, opindex, valuep);
+  if (term)
+    *ptr = saved_char;
+  if (errmsg)
+    return errmsg;
+
+  if ((*strp)[0] == '+' && (*strp)[1] == '=')
+    {
+      (*strp) += 2;
+      *postmod_p = TRUE;
+    }
+
+  return 0;
+}
+
+static const char *
+parse_vc4_reg (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+               const char **strp,
+               int opindex ATTRIBUTE_UNUSED,
+               unsigned int *regno_out,
+               unsigned int maxreg)
+{
+  int scanned, chars_read = 0;
+  unsigned regno;
+
+  if (**strp != 'r')
+    return "expecting register";
+
+  (*strp)++;
+
+  scanned = sscanf (*strp, "%u%n", &regno, &chars_read);
+  if (scanned == 0)
+    return "expecting register number";
+
+  if (regno > maxreg)
+    return "register out of range";
+
+  (*strp) += chars_read;
+
+  *regno_out = regno;
+
+  return 0;
+}
+
+/* Vector insn parsing.
+
+   This parses a vector operand and encodes bits as:
+
+   19     16 15         10 9                   0
+   [r r r r] [f f f f f f] [v v v v v v v v v v]
+       |           |                 `-encoded coordinate.
+       |            `-added scalar reg, column offset flag & post-inc.
+        `-extra coordinate bits for A operand.
+*/
+
+static const char *
+parse_vector_reg (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                  unsigned long *valuep, vc4_operand whichop,
+                  bfd_boolean extended)
+{
+  const char *ptr = *strp;
+  vc4_vec_dir vec_dir;
+  unsigned long y, x;
+  const char *errmsg;
+  unsigned long valbits = 0;
+  bfd_boolean do_inc = FALSE;
+  bfd_boolean column_offset = FALSE;
+  bfd_boolean inc_here;
+  unsigned scalar_reg = 15;
+  bfd_boolean areg_p = (whichop == OP_A) && extended;
+
+  if ((ptr[0] == 'H' && ptr[1] == 'X')
+      || (ptr[0] == 'H' && ptr[1] == '1' && ptr[2] == '6'))
+    vec_dir = HX;
+  else if ((ptr[0] == 'H' && ptr[1] == 'Y')
+           || (ptr[0] == 'H' && ptr[1] == '3' && ptr[2] == '2'))
+    vec_dir = HY;
+  else if (ptr[0] == 'H'
+           || (ptr[0] == 'H' && ptr[1] == '8'))
+    vec_dir = H;
+  else if ((ptr[0] == 'V' && ptr[1] == 'X')
+           || (ptr[0] == 'V' && ptr[1] == '1' && ptr[2] == '6'))
+    vec_dir = VX;
+  else if ((ptr[0] == 'V' && ptr[1] == 'Y')
+           || (ptr[0] == 'V' && ptr[1] == '3' && ptr[2] == '2'))
+    vec_dir = VY;
+  else if (ptr[0] == 'V'
+           || (ptr[0] == 'V' && ptr[1] == '8'))
+    vec_dir = V;
+  else if (ptr[0] == '-')
+    {
+      /* This is a special case.  Just hard-wire the "dash" encoding and
+         return.  */
+      *valuep = 0x380;
+      *strp = ptr + 1;
+
+      return 0;
+    }
+  else
+    return "expected H/HX/HY/V/VX/VY";
+
+  /* H8/H16/H32 and V8/V16/V32 happen to each be one char longer than their
+     H/HX/HY and V/VX/VY aliases.  */
+  if (ISDIGIT (ptr[1]))
+    ptr++;
+
+  if (vec_dir == H || vec_dir == V)
+    ptr++;
+  else
+    ptr += 2;
+
+  if (*ptr != '(')
+    return "expected '('";
+
+  ptr++;
+
+  *strp = ptr;
+  errmsg = parse_unsigned_int_maybe_postinc (cd, strp, opindex, &y, &inc_here);
+  if (errmsg)
+    return errmsg;
+
+  if (extended && (vec_dir == H || vec_dir == HX || vec_dir == HY))
+    do_inc |= inc_here;
+  else if (inc_here)
+    return "can't increment vertical";
+
+  if (**strp != ',')
+    return "expected ,";
+  (*strp)++;
+
+  errmsg = parse_unsigned_int_maybe_postinc (cd, strp, opindex, &x, &inc_here);
+  if (errmsg)
+    return errmsg;
+
+  if (extended && (vec_dir == V || vec_dir == VX || vec_dir == VY))
+    do_inc |= inc_here;
+  else if (inc_here)
+    return "can't increment horizontal";
+
+  ptr = *strp;
+  if (*ptr != ')')
+    return "expected ')'";
+
+  ptr++;
+
+  if (extended && ptr[0] == '+' && ptr[1] == 'r')
+    {
+      unsigned long regno;
+      int scanned, chars_read = 0;
+      ptr += 2;
+      scanned = sscanf (ptr, "%lu%n", &regno, &chars_read);
+      if (scanned == 0)
+        return "expecting register number";
+      if (regno > 14)
+        return "register out of range";
+      ptr += chars_read;
+      scalar_reg = regno;
+    }
+
+  if (extended && *ptr == '*')
+    {
+      ptr++;
+      column_offset = TRUE;
+    }
+
+  if (x > 63)
+    return "X position out of range";
+
+  if (y > 63)
+    return "Y position out of range";
+
+  switch (vec_dir)
+    {
+    case H:
+      if (!areg_p && (x & 15) != 0)
+        return "can't encode X position";
+      valbits = y & 63;
+      valbits |= (x >> 4) << 7;
+      if (areg_p)
+        valbits |= (x & 15) << 16;
+      break;
+    case HX:
+      if ((!areg_p && (x & 31) != 0)
+          || (areg_p && (x & 31) >= 16))
+        return "can't encode X position";
+      valbits = y & 63;
+      valbits |= 0x200;
+      valbits |= (x >> 5) << 7;
+      if (areg_p)
+        valbits |= (x & 15) << 16;
+      break;
+    case HY:
+      if ((!areg_p && x != 0)
+          || (areg_p && x >= 16))
+        return "can't encode X position";
+      valbits = y & 63;
+      valbits |= 0x300;
+      if (areg_p)
+        valbits |= (x & 15) << 16;
+      break;
+    case V:
+      if (!areg_p)
+        {
+          if ((y & 15) != 0)
+            return "can't encode Y position";
+          valbits = y & 0x30;
+          valbits |= x & 15;
+          valbits |= 0x40;
+          valbits |= (x >> 4) << 7;
+        }
+      else
+        {
+          valbits = y & 63;
+          valbits |= (x >> 4) << 7;
+          valbits |= 0x40;
+          valbits |= (x & 15) << 16;
+        }
+     break;
+    case VX:
+      if ((x & 31) >= 16)
+        return "can't encode X position";
+      if (!areg_p)
+        {
+          if ((y & 15) != 0)
+            return "can't encode Y position";
+          valbits = y & 0x30;
+          valbits |= x & 15;
+          valbits |= 0x240;
+          valbits |= (x >> 5) << 7;
+        }
+      else
+        {
+          valbits = y & 63;
+          valbits |= 0x240;
+          valbits |= (x >> 5) << 7;
+          valbits |= (x & 15) << 16;
+        }
+      break;
+    case VY:
+      if (x >= 16)
+        return "can't encode X position";
+      if (!areg_p)
+        {
+          if ((y & 15) != 0)
+            return "can't encode Y position";
+          valbits = y & 0x30;
+          valbits |= x & 15;
+          valbits |= 0x340;
+        }
+      else
+        {
+          valbits = y & 63;
+          valbits |= 0x340;
+          valbits |= (x & 15) << 16;
+        }
+      break;
+    }
+
+  if (extended)
+    {
+      if (column_offset)
+        valbits |= 0x400;
+
+      if (do_inc)
+        valbits |= 0x800;
+
+      valbits |= scalar_reg << 12;
+    }
+
+  *valuep = valbits;
+  *strp = ptr;
+
+  return 0;
+}
+
+static const char *
+parse_vec80aludreg (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                    unsigned long *valuep)
+{
+  return parse_vector_reg (cd, strp, opindex, valuep, OP_D, TRUE);
+}
+
+static const char *
+parse_vec80aluareg (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                    unsigned long *valuep)
+{
+  return parse_vector_reg (cd, strp, opindex, valuep, OP_A, TRUE);
+}
+
+static const char *
+parse_vec80alubreg (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                    unsigned long *valuep)
+{
+  return parse_vector_reg (cd, strp, opindex, valuep, OP_B, TRUE);
+}
+
+static int
+parse_scalar_reg_update (const char **strp, unsigned long *acc_sru, int opcode)
+{
+  int scanned, chars_read = 0;
+  unsigned regno;
+
+  if (**strp == ' ')
+    (*strp)++;
+
+  if (**strp != 'r')
+    return 1;
+
+  (*strp)++;
+
+  scanned = sscanf (*strp, "%u%n", &regno, &chars_read);
+  if (scanned == 0)
+    return 1;
+
+  if (regno > 7)
+    return 1;
+
+  *acc_sru = regno | (opcode << 3) | SRU_BIT;
+
+  (*strp) += chars_read;
+
+  return 0;
+}
+
+/* Parses modifiers and encodes as:
+
+   13            7 6     4  3  2     0
+   [i i i i i i i] [p p p] [F] [r r r]
+          |           |     |     `-repeat count
+          |           |      `-set flags
+          |            `-lane predication
+           `-SRU or ACC settings.
+*/
+
+static const char *
+parse_vec80mods (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+                 const char **strp,
+                 int opindex ATTRIBUTE_UNUSED,
+                 unsigned long *valuep)
+{
+  unsigned long repeat = 0;
+  unsigned long acc_sru = 0;
+  unsigned long predication = 0;
+  bfd_boolean setf = FALSE;
+  bfd_boolean sru_p = FALSE;
+  bfd_boolean acc_p = FALSE;
+
+  while (**strp != 0)
+    {
+      if (**strp == ' ')
+        (*strp)++;
+
+      if (strncmp (*strp, "REP", 3) == 0)
+        {
+          if (repeat)
+            return "multiple REP specifiers";
+
+          (*strp) += 3;
+          if (strncmp (*strp, "2", 1) == 0)
+            repeat = 1, (*strp)++;
+          else if (strncmp (*strp, "4", 1) == 0)
+            repeat = 2, (*strp)++;
+          else if (strncmp (*strp, "8", 1) == 0)
+            repeat = 3, (*strp)++;
+          else if (strncmp (*strp, "16", 2) == 0)
+            repeat = 4, (*strp) += 2;
+          else if (strncmp (*strp, "32", 2) == 0)
+            repeat = 5, (*strp) += 2;
+          else if (strncmp (*strp, "64", 2) == 0)
+            repeat = 6, (*strp) += 2;
+          else if (strncmp (*strp, " r0", 3) == 0)
+            repeat = 7, (*strp) += 3;
+          else
+            return "bad repeat count";
+        }
+      else if (strncmp (*strp, "SETF", 4) == 0)
+        {
+          setf = TRUE;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "ALL", 3) == 0)
+        {
+          predication = 0;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "NONE", 4) == 0)
+        {
+          predication = 1;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "IFZ", 3) == 0)
+        {
+          predication = 2;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "IFNZ", 4) == 0)
+        {
+          predication = 3;
+          (*strp) += 4;
+        }
+      /* This one must come before other "IFN*" predicate checks.  */
+      else if (strncmp (*strp, "IFNN", 4) == 0)
+        {
+          predication = 5;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "IFNC", 4) == 0)
+        {
+          predication = 7;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "IFN", 3) == 0)
+        {
+          predication = 4;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "IFC", 3) == 0)
+        {
+          predication = 6;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "ENA", 3) == 0)
+        {
+          if (sru_p)
+            return "can't have ENA with SRU";
+          acc_sru |= ENA_BIT;
+          acc_p = TRUE;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "HIGH", 4) == 0)
+        {
+          if (sru_p)
+            return "can't have HIGH with SRU";
+          acc_sru |= HIGH_BIT;
+          acc_p = TRUE;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "SIGN", 4) == 0)
+        {
+          if (sru_p)
+            return "can't have SIGN with SRU";
+          acc_sru |= SIGN_BIT;
+          acc_p = TRUE;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "CLRA", 4) == 0)
+        {
+          if (sru_p)
+            return "can't have CLRA with SRU";
+          acc_sru |= CLRA_BIT;
+          acc_p = TRUE;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "WBA", 3) == 0)
+        {
+          if (sru_p)
+            return "can't have WBA with SRU";
+          acc_sru |= WBA_BIT;
+          acc_p = TRUE;
+          (*strp) += 3;
+        }
+      else if (strncmp (*strp, "SUB", 3) == 0)
+        {
+          if (sru_p)
+            return "can't have SUB with SRU";
+          acc_sru |= SUB_BIT;
+          acc_p = TRUE;
+          (*strp) += 3;
+        }
+      else if (**strp
+               && (strncmp ((*strp) + 1, "ACC", 3) == 0
+                   || strncmp ((*strp) + 1, "ADD", 3) == 0))
+        {
+          if (sru_p)
+            return "can't have ACC with SRU";
+          acc_sru |= ENA_BIT;
+          if (strncmp ((*strp) + 1, "ACC", 3) == 0)
+            acc_sru |= WBA_BIT;
+          if (**strp == 'S')
+            acc_sru |= SIGN_BIT;
+          else if (**strp != 'U')
+            return "not UACC/SACC";
+          if ((*strp)[4] == 'H')
+            {
+              acc_sru |= HIGH_BIT;
+              (*strp)++;
+            }
+          acc_p = TRUE;
+          (*strp) += 4;
+        }
+      else if (**strp
+               && (strncmp ((*strp) + 1, "DEC", 3) == 0
+                   || strncmp ((*strp) + 1, "SUB", 3) == 0))
+        {
+          if (sru_p)
+            return "can't have DEC with SRU";
+          acc_sru |= ENA_BIT;
+          if (strncmp ((*strp) + 1, "DEC", 3) == 0)
+            acc_sru |= WBA_BIT;
+          if (**strp == 'S')
+            acc_sru |= SIGN_BIT;
+          else if (**strp != 'U')
+            return "not UDEC/SDEC";
+          if ((*strp)[4] == 'H')
+            {
+              acc_sru |= HIGH_BIT;
+              (*strp)++;
+            }
+          acc_p = TRUE;
+          (*strp) += 4;
+        }
+      else if (strncmp (*strp, "SUMS", 4) == 0
+               || strncmp (*strp, "SUMU", 4) == 0)
+        {
+          int opcode = (*strp)[3] == 'S' ? 1 : 0;
+          if (acc_p)
+            return "can't have SUMS/SUMU with ACC";
+
+          (*strp) += 4;
+
+          if (parse_scalar_reg_update (strp, &acc_sru, opcode))
+            return "error parsing scalar update reg";
+
+          sru_p = TRUE;
+        }
+      else if (strncmp (*strp, "IMIN", 4) == 0)
+        {
+          if (acc_p)
+            return "can't have IMIN with ACC";
+          (*strp) += 4;
+          if (parse_scalar_reg_update (strp, &acc_sru, 3))
+            return "error parsing scalar update reg";
+          sru_p = TRUE;
+        }
+      else if (strncmp (*strp, "IMAX", 4) == 0)
+        {
+          if (acc_p)
+            return "can't have IMAX with ACC";
+          (*strp) += 4;
+          if (parse_scalar_reg_update (strp, &acc_sru, 5))
+            return "error parsing scalar update reg";
+          sru_p = TRUE;
+        }
+      else if (strncmp (*strp, "MAX", 3) == 0)
+        {
+          if (acc_p)
+            return "can't have MAX with ACC";
+          (*strp) += 3;
+          if (parse_scalar_reg_update (strp, &acc_sru, 7))
+            return "error parsing scalar update reg";
+          sru_p = TRUE;
+        }
+      else
+        return "unexpected modifier";
+    }
+
+  if (acc_p && sru_p)
+    return "scalar reg update and accumulator ops";
+
+  *valuep = repeat | (setf << 3) | (predication << 4) | (acc_sru << 7);
+
+  return 0;
+}
+
+static const char *
+parse_vec80mods_mem (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                     unsigned long *valuep)
+{
+  const char *err = parse_vec80mods (cd, strp, opindex, valuep);
+  if (err)
+    return err;
+  if ((*valuep & 0x7f) != *valuep)
+    return "can't use SRU or ACC modifiers with memory op";
+  return 0;
+}
+
+static const char *
+parse_vec48mod_setf (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                     unsigned long *valuep)
+{
+  unsigned long allbits;
+  const char *err = parse_vec80mods (cd, strp, opindex, &allbits);
+  if (err)
+    return err;
+
+  if (allbits == 0x8)
+    *valuep = 1;
+  else if (allbits == 0)
+    *valuep = 0;
+  else
+    return "only setf modifier here";
+
+  return 0;
+}
+
+static const char *
+parse_vec48imm_mods (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                     unsigned long *valuep)
+{
+  unsigned long allbits;
+  const char *err = parse_vec80mods (cd, strp, opindex, &allbits);
+  if (err)
+    return err;
+
+  if ((allbits & 0x78) != allbits)
+    return "only setf/predication modifiers here";
+
+  *valuep = (allbits >> 3) & 15;
+  return 0;
+}
+
+/* Parses an address with offset & register-modify.
+
+   25     22 21         16 15                              0
+   [s s s s] [a a a a a a] [i i i i i i i i i i i i i i i i]
+       |           |                       `-immediate offset
+       |            `-ra (or rd for stores)
+        `-rs
+*/
+
+static const char *
+parse_ld_st_addr (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+                  const char **strp,
+                  int opindex ATTRIBUTE_UNUSED,
+                  unsigned long *valuep)
+{
+  unsigned rs, rad = 15;
+  long offset = 0;
+  bfd_boolean postmod = FALSE;
+  const char *errmsg;
+
+  errmsg = parse_vc4_reg (cd, strp, opindex, &rs, 15);
+  if (errmsg)
+    return errmsg;
+
+  if ((*strp)[0] == '+' && (*strp)[1] != '=')
+    {
+      (*strp)++;
+      errmsg = parse_signed_int_maybe_postmod (cd, strp, opindex, &offset,
+                                               &postmod);
+      if (errmsg)
+        return errmsg;
+    }
+  else if ((*strp)[0] == '+' && (*strp)[1] == '=')
+    {
+      (*strp) += 2;
+      postmod = TRUE;
+    }
+
+  if (postmod)
+    {
+      errmsg = parse_vc4_reg (cd, strp, opindex, &rad, 14);
+      if (errmsg)
+        return errmsg;
+    }
+
+  *valuep = (offset & 0xffff) | (rad << 18) | (rs << 22);
+
+  return 0;
+}
+
+static const char *
+parse_vec80ldaddr (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                   unsigned long *valuep)
+{
+  return parse_ld_st_addr (cd, strp, opindex, valuep);
+}
+
+static const char *
+parse_vec80staddr (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                   unsigned long *valuep)
+{
+  return parse_ld_st_addr (cd, strp, opindex, valuep);
+}
+
+static const char *
+parse_dummy (CGEN_CPU_DESC cd, const char **strp, int opindex,
+             unsigned long *valuep)
+{
+  *valuep = 0;
+  return 0;
+}
+
+static const char *
+parse_plus_sreg (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                 unsigned long *valuep, unsigned whichreg)
+{
+  const char *errmsg;
+  unsigned int regno;
+
+  if (**strp != '+')
+    {
+      *valuep = 0;
+      return 0;
+    }
+
+  (*strp)++;
+
+  errmsg = parse_vc4_reg (cd, strp, opindex, &regno, 7);
+  if (errmsg)
+    return errmsg;
+
+  if (regno != whichreg)
+    return "unexpected register";
+
+  *valuep = 1;
+  return 0;
+}
+
+#define PLUS_SREG(X)                                                    \
+  static const char *                                                   \
+  parse_plus_sr##X (CGEN_CPU_DESC cd, const char **strp, int opindex,   \
+                    unsigned long *valuep)                              \
+  {                                                                     \
+    return parse_plus_sreg (cd, strp, opindex, valuep, (X));            \
+  }
+
+PLUS_SREG(0)
+PLUS_SREG(1)
+PLUS_SREG(2)
+PLUS_SREG(3)
+PLUS_SREG(4)
+PLUS_SREG(5)
+PLUS_SREG(6)
+PLUS_SREG(7)
+
+static const char *
+parse_vec48hvec (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                 unsigned long *valuep, vc4_operand whichop)
+{
+  const char *errmsg = parse_vector_reg (cd, strp, opindex, valuep, whichop,
+                                         FALSE);
+
+  if (errmsg)
+    return errmsg;
+
+  if ((*valuep & 0x3ff) != *valuep)
+    return "too complicated for 48-bit insn";
+
+  if ((*valuep & 0x40) != 0)
+    return "not an H reg";
+
+  return 0;
+}
+
+static const char *
+parse_vec48vvec (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                 unsigned long *valuep, vc4_operand whichop)
+{
+  const char *errmsg = parse_vector_reg (cd, strp, opindex, valuep, whichop,
+                                         FALSE);
+
+  if (errmsg)
+    return errmsg;
+
+  if ((*valuep & 0x3ff) != *valuep)
+    return "too complicated for 48-bit insn";
+
+  if ((*valuep & 0x40) == 0)
+    return "not a V reg";
+
+  return 0;
+}
+
+static const char *
+parse_vec48aludreg_h (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48hvec (cd, strp, opindex, valuep, OP_D);
+}
+
+static const char *
+parse_vec48aludreg_v (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48vvec (cd, strp, opindex, valuep, OP_D);
+}
+
+static const char *
+parse_vec48aluareg_h (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48hvec (cd, strp, opindex, valuep, OP_A);
+}
+
+static const char *
+parse_vec48aluareg_v (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48vvec (cd, strp, opindex, valuep, OP_A);
+}
+
+static const char *
+parse_vec48alubreg_h (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48hvec (cd, strp, opindex, valuep, OP_B);
+}
+
+static const char *
+parse_vec48alubreg_v (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                      unsigned long *valuep)
+{
+  return parse_vec48vvec (cd, strp, opindex, valuep, OP_B);
+}
+
+static const char *
+parse_vec48sclr (CGEN_CPU_DESC cd, const char **strp, int opindex,
+                 unsigned long *valuep)
+{
+  unsigned reg;
+  const char *errmsg = parse_vc4_reg (cd, strp, opindex, &reg, 15);
+  if (errmsg)
+    return errmsg;
+  *valuep = reg;
+  return 0;
+}
+
+/* -- dis.c */
+
+#define CGEN_PRINT_INSN vc4_print_insn
+
+typedef enum
+{
+  VC4_STANDARD_INSN,
+  VC4_SWITCH_CASES
+} vc4_disassemble_state;
+
+typedef struct
+{
+  vc4_disassemble_state disassemble_state;
+  int table_entry_size;
+  bfd_vma base_address;
+} vc4_private_data;
+
+static int
+vc4_print_insn (CGEN_CPU_DESC cd, bfd_vma pc, disassemble_info *info)
+{
+  bfd_byte buf[CGEN_MAX_INSN_SIZE];
+  const int maxlen = 6;
+  int buflen;
+  int status;
+  int insn;
+  vc4_private_data *vc4_data = info->private_data;
+  bfd_boolean symbol_here = (*info->symbol_at_address_func) (pc, info);
+
+  if (info->private_data == NULL)
+    vc4_data = info->private_data = calloc (sizeof (vc4_private_data), 1);
+
+  info->bytes_per_line = buflen = maxlen;
+
+  do
+    {
+      memset (buf, 0, 10);
+      status = (*info->read_memory_func) (pc, buf, buflen, info);
+      buflen -= 2;
+    }
+  while (status != 0 && buflen > 0);
+
+  if (status != 0)
+    {
+      (*info->memory_error_func) (status, pc, info);
+      return -1;
+    }
+
+  if (symbol_here
+      && vc4_data->disassemble_state == VC4_SWITCH_CASES
+      && pc > vc4_data->base_address)
+    vc4_data->disassemble_state = VC4_STANDARD_INSN;
+
+  switch (vc4_data->disassemble_state)
+    {
+    case VC4_STANDARD_INSN:
+      {
+        insn = buf[0] | (buf[1] << 8);
+
+        if ((insn & 0xffc0) == 0x0080)
+          {
+            /* If there's a label right after this switch statement, start
+               disassembling as switch cases instead of instructions.  This
+               won't work for disassembling files without symbols!  */
+            if ((*info->symbol_at_address_func) (pc + 2, info))
+              vc4_data->disassemble_state = VC4_SWITCH_CASES;
+
+            vc4_data->table_entry_size = (insn & 0x20) ? 2 : 1;
+            vc4_data->base_address = pc + 2;
+          }
+      }
+      break;
+
+    case VC4_SWITCH_CASES:
+      {
+        bfd_vma target;
+        bfd_signed_vma offset;
+
+        switch (vc4_data->table_entry_size)
+          {
+          case 1:
+            offset = buf[0];
+            if (offset & 0x80)
+              offset -= 0x100;
+            break;
+          case 2:
+            offset = buf[0] | (buf[1] << 8);
+            if (offset & 0x8000)
+              offset -= 0x10000;
+            break;
+          default:
+            abort ();
+          }
+
+        target = vc4_data->base_address + 2 * offset;
+
+        info->fprintf_func (info->stream, ".case ");
+        (*info->print_address_func) (target, info);
+
+        return vc4_data->table_entry_size;
+      }
+      break;
+    }
+
+  return print_insn (cd, pc, info, buf, 6);
+}
+
+#define PRINT_SHLN(N)                                           \
+  static void                                                   \
+  print_shl##N (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,              \
+	        void * dis_info,                                \
+	        long value ATTRIBUTE_UNUSED,                    \
+	        unsigned int attrs ATTRIBUTE_UNUSED,            \
+	        bfd_vma pc ATTRIBUTE_UNUSED,                    \
+	        int length ATTRIBUTE_UNUSED)                    \
+  {                                                             \
+    disassemble_info *info = (disassemble_info *) dis_info;     \
+    (*info->fprintf_func) (info->stream, "<<" #N);              \
+  }
+
+PRINT_SHLN(1)
+PRINT_SHLN(2)
+PRINT_SHLN(3)
+PRINT_SHLN(4)
+PRINT_SHLN(5)
+PRINT_SHLN(6)
+PRINT_SHLN(7)
+PRINT_SHLN(8)
+
+/* Vector insn printing.  */
+
+static void
+print_vector_reg (void *dis_info, unsigned long value, vc4_operand whichop)
+{
+  vc4_vec_dir vec_dir;
+  unsigned x, y;
+  bfd_boolean do_inc, column_offset;
+  unsigned scalar_reg;
+  disassemble_info *info = (disassemble_info *) dis_info;
+  const char *typename;
+  bfd_boolean areg_p = whichop == OP_A;
+
+  switch ((value >> 6) & 15)
+    {
+    case 0: case 2: case 4: case 6:
+      vec_dir = H;
+      x = ((value >> 7) & 3) << 4;
+      if (areg_p)
+        x |= (value >> 16) & 15;
+      y = value & 63;
+      break;
+    case 8: case 10:
+      vec_dir = HX;
+      x = ((value >> 7) & 1) << 5;
+      if (areg_p)
+        x |= (value >> 16) & 15;
+      y = value & 63;
+      break;
+    case 12:
+      vec_dir = HY;
+      x = 0;
+      if (areg_p)
+        x |= (value >> 16) & 15;
+      y = value & 63;
+      break;
+
+    case 1: case 3: case 5: case 7:
+      vec_dir = V;
+      if (!areg_p)
+        {
+          x = ((value >> 7) & 3) << 4;
+          x |= value & 15;
+          y = value & 0x30;
+        }
+      else
+        {
+          x = ((value >> 7) & 3) << 4;
+          x |= (value >> 16) & 15;
+          y = value & 0x3f;
+        }
+      break;
+    case 9: case 11:
+      vec_dir = VX;
+      if (!areg_p)
+        {
+          x = ((value >> 7) & 1) << 5;
+          x |= value & 15;
+          y = value & 0x30;
+        }
+      else
+        {
+          x = ((value >> 7) & 1) << 5;
+          x |= (value >> 16) & 15;
+          y = value & 0x3f;
+        }
+      break;
+    case 13:
+      vec_dir = VY;
+      if (!areg_p)
+        {
+          x = value & 15;
+          y = value & 0x30;
+        }
+      else
+        {
+          x = (value >> 16) & 15;
+          y = value & 0x3f;
+        }
+      break;
+
+    case 14:
+    case 15:
+      vec_dir = DASH;
+      x = y = 0;
+      break;
+    }
+
+  column_offset = (value >> 10) & 1;
+  do_inc = (value >> 11) & 1;
+  scalar_reg = (value >> 12) & 15;
+
+  switch (vec_dir)
+    {
+    case H: typename = "H"; break;
+    case HX: typename = "HX"; break;
+    case HY: typename = "HY"; break;
+    case V: typename = "V"; break;
+    case VX: typename = "VX"; break;
+    case VY: typename = "VY"; break;
+    case DASH:
+      if (whichop == OP_D || whichop == OP_A)
+        (*info->fprintf_func) (info->stream, "-");
+      else if (whichop == OP_B)
+        {
+          /* A scalar reg rN+s9 immediate.  */
+          long offset;
+          (*info->fprintf_func) (info->stream, "r%u", scalar_reg);
+          offset = value & 127;
+          offset |= ((value >> 10) & 3) << 7;
+          if (offset & 0x100)
+            offset |= ~0xffl;
+          if (offset != 0)
+            (*info->fprintf_func) (info->stream, "%s%d", offset > 0 ? "+" : "",
+                                   offset);
+        }
+      return;
+    }
+
+  (*info->fprintf_func) (info->stream, "%s(%u", typename, y);
+  if ((vec_dir == H || vec_dir == HX || vec_dir == HY)
+      && do_inc)
+    (*info->fprintf_func) (info->stream, "++");
+
+  (*info->fprintf_func) (info->stream, ",%u", x);
+  if ((vec_dir == V || vec_dir == VX || vec_dir == VY)
+      && do_inc)
+    (*info->fprintf_func) (info->stream, "++");
+
+  (*info->fprintf_func) (info->stream, ")");
+
+  if (scalar_reg != 15)
+    (*info->fprintf_func) (info->stream, "+r%u", scalar_reg);
+
+  if (column_offset)
+    (*info->fprintf_func) (info->stream, "*");
+}
+
+static void
+print_vec80aludreg (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	            void * dis_info,
+	            unsigned long value,
+	            unsigned int attrs ATTRIBUTE_UNUSED,
+	            bfd_vma pc ATTRIBUTE_UNUSED,
+	            int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value, OP_D);
+}
+
+static void
+print_vec80aluareg (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	            void * dis_info,
+	            unsigned long value,
+	            unsigned int attrs ATTRIBUTE_UNUSED,
+	            bfd_vma pc ATTRIBUTE_UNUSED,
+	            int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value, OP_A);
+}
+
+static void
+print_vec80alubreg (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	            void * dis_info,
+	            unsigned long value,
+	            unsigned int attrs ATTRIBUTE_UNUSED,
+	            bfd_vma pc ATTRIBUTE_UNUSED,
+	            int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value, OP_B);
+}
+
+static void
+print_vec80mods (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	         void * dis_info,
+	         unsigned long value,
+	         unsigned int attrs ATTRIBUTE_UNUSED,
+	         bfd_vma pc ATTRIBUTE_UNUSED,
+	         int length ATTRIBUTE_UNUSED)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  unsigned long repeat = value & 7;
+  bfd_boolean setf = (value >> 3) & 1;
+  unsigned long predication = (value >> 4) & 7;
+  unsigned long acc_sru = (value >> 7) & 127;
+  const char *rep_str = "", *pred_str = "";
+
+  switch (repeat)
+    {
+    case 1: rep_str = " REP2"; break;
+    case 2: rep_str = " REP4"; break;
+    case 3: rep_str = " REP8"; break;
+    case 4: rep_str = " REP16"; break;
+    case 5: rep_str = " REP32"; break;
+    case 6: rep_str = " REP64"; break;
+    case 7: rep_str = " REP r0"; break;
+    }
+
+  (*info->fprintf_func) (info->stream, "%s", rep_str);
+
+  if (setf)
+    (*info->fprintf_func) (info->stream, " SETF");
+
+  switch (predication)
+    {
+    case 1: pred_str = " NONE"; break;
+    case 2: pred_str = " IFZ"; break;
+    case 3: pred_str = " IFNZ"; break;
+    case 4: pred_str = " IFN"; break;
+    case 5: pred_str = " IFNN"; break;
+    case 6: pred_str = " IFC"; break;
+    case 7: pred_str = " IFNC"; break;
+    }
+
+  (*info->fprintf_func) (info->stream, "%s", pred_str);
+
+  if (acc_sru & SRU_BIT)
+    {
+      const char *func_str = "";
+      switch ((acc_sru >> 3) & 7)
+        {
+        case 0: func_str = "SUMU"; break;
+        case 1: func_str = "SUMS"; break;
+        case 2: func_str = "max2"; break;
+        case 3: func_str = "IMIN"; break;
+        case 4: func_str = "max4"; break;
+        case 5: func_str = "IMAX"; break;
+        case 6: func_str = "max6"; break;
+        case 7: func_str = "MAX"; break;
+        }
+      (info->fprintf_func) (info->stream, " %s r%u", func_str, acc_sru & 7);
+    }
+  else if (acc_sru & ENA_BIT)
+    {
+      struct
+        {
+          unsigned bitmask;
+          const char *friendly_name;
+        } known[] =
+        {
+          { WBA_BIT,                                 "UACC" },
+          { WBA_BIT | SUB_BIT,                       "UDEC" },
+          { SIGN_BIT | WBA_BIT,                      "SACC" },
+          { SIGN_BIT | WBA_BIT | SUB_BIT,            "SDEC" },
+          { HIGH_BIT | WBA_BIT,                      "UACCH" },
+          { HIGH_BIT | WBA_BIT | SUB_BIT,            "UDECH" },
+          { HIGH_BIT | SIGN_BIT | WBA_BIT,           "SACCH" },
+          { HIGH_BIT | SIGN_BIT | WBA_BIT | SUB_BIT, "SDECH" },
+          { 0,                                       "UADD" },
+          { SUB_BIT,                                 "USUB" },
+          { SIGN_BIT,                                "SADD" },
+          { SIGN_BIT | SUB_BIT,                      "SSUB" },
+          { HIGH_BIT,                                "UADDH" },
+          { HIGH_BIT | SUB_BIT,                      "USUBH" },
+          { HIGH_BIT | SIGN_BIT,                     "SADDH" },
+          { HIGH_BIT | SIGN_BIT | SUB_BIT,           "SSUBH" }
+        };
+      unsigned i;
+
+      if (acc_sru & CLRA_BIT)
+        (*info->fprintf_func) (info->stream, " CLRA");
+
+      for (i = 0; i < 16; i++)
+        if ((acc_sru & ~(ENA_BIT | CLRA_BIT)) == known[i].bitmask)
+          {
+            (info->fprintf_func) (info->stream, " %s",
+                                  known[i].friendly_name);
+            break;
+          }
+
+      /* All cases should be covered above.  */
+      if (i == 16)
+        abort ();
+    }
+}
+
+static void
+print_vec48mod_setf (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	             void * dis_info,
+	             unsigned long value,
+	             unsigned int attrs ATTRIBUTE_UNUSED,
+	             bfd_vma pc ATTRIBUTE_UNUSED,
+	             int length ATTRIBUTE_UNUSED)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  if (value)
+    (info->fprintf_func) (info->stream, " SETF");
+}
+
+static void
+print_vec48imm_mods (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	             void * dis_info,
+	             unsigned long value,
+	             unsigned int attrs ATTRIBUTE_UNUSED,
+	             bfd_vma pc ATTRIBUTE_UNUSED,
+	             int length ATTRIBUTE_UNUSED)
+{
+  print_vec80mods (cd, dis_info, value << 3, attrs, pc, length);
+}
+
+static void
+print_scalar_reg (disassemble_info *info, int regno)
+{
+  (info->fprintf_func) (info->stream, "r%u", regno);
+}
+
+static void
+print_ld_st_addr (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	          void * dis_info,
+	          unsigned long value,
+	          unsigned int attrs ATTRIBUTE_UNUSED,
+	          bfd_vma pc ATTRIBUTE_UNUSED,
+	          int length ATTRIBUTE_UNUSED)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  unsigned rs = (value >> 22) & 15;
+  unsigned rad = (value >> 16) & 63;
+  long offset = value & 0xfffful;
+
+  print_scalar_reg (info, rs);
+
+  if (offset & 0x8000)
+    offset |= ~0xffffl;
+
+  /* Printing the '+' here for negative numbers too is kind of deliberate --
+     that's how VC4 assembly sources seem to write it, and that's the assembly
+     syntax we accept too.  */
+  if (offset != 0)
+    (info->fprintf_func) (info->stream, "+%ld", offset);
+
+  if ((rad & 3) != 0)
+    (*info->fprintf_func) (info->stream, "[ra/d low bits %d?]", rad & 3);
+
+  rad >>= 2;
+
+  if ((rad & 15) < 15)
+    {
+      (*info->fprintf_func) (info->stream, "+=");
+      print_scalar_reg (info, rad);
+    }
+}
+
+static void
+print_vec80ldaddr (CGEN_CPU_DESC cd, void * dis_info, unsigned long value,
+	           unsigned int attrs, bfd_vma pc, int length)
+{
+  print_ld_st_addr (cd, dis_info, value, attrs, pc, length);
+}
+
+static void
+print_vec80staddr (CGEN_CPU_DESC cd, void * dis_info, unsigned long value,
+	           unsigned int attrs, bfd_vma pc, int length)
+{
+  print_ld_st_addr (cd, dis_info, value, attrs, pc, length);
+}
+
+static void
+print_extraldstbits (CGEN_CPU_DESC cd, void * dis_info, unsigned long value,
+	            unsigned int attrs, bfd_vma pc, int length)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  if (value != 0)
+    (*info->fprintf_func) (info->stream, "\t; A/D extra: %lx (r%d%s%s)", value,
+      value >> 2, (value & 2) ? "++" : "", (value & 1) ? "*" : "");
+}
+
+static void
+print_plus_sreg (CGEN_CPU_DESC cd, void * dis_info, unsigned long value,
+                 unsigned int attrs, bfd_vma pc, int length, unsigned sreg)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  if (value != 0)
+    (*info->fprintf_func) (info->stream, "+r%u", sreg);
+}
+
+#define PRINT_SREG(X)                                                   \
+  static void print_plus_sr##X (CGEN_CPU_DESC cd, void * dis_info,      \
+                                unsigned long value, unsigned int attrs,\
+                                bfd_vma pc, int length)                 \
+  {                                                                     \
+    print_plus_sreg (cd, dis_info, value, attrs, pc, length, (X));      \
+  }
+
+PRINT_SREG(0)
+PRINT_SREG(1)
+PRINT_SREG(2)
+PRINT_SREG(3)
+PRINT_SREG(4)
+PRINT_SREG(5)
+PRINT_SREG(6)
+PRINT_SREG(7)
+
+static void
+print_vec48aludreg_h (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, (value & ~0x40) | 0xf000, OP_D);
+}
+
+static void
+print_vec48aludreg_v (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value | 0xf040, OP_D);
+}
+
+static void
+print_vec48aluareg_h (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, (value & ~0x40) | 0xf000, OP_A);
+}
+
+static void
+print_vec48aluareg_v (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value | 0xf040, OP_A);
+}
+
+static void
+print_vec48alubreg_h (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, (value & ~0x40) | 0xf000, OP_B);
+}
+
+static void
+print_vec48alubreg_v (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	              void * dis_info,
+	              unsigned long value,
+	              unsigned int attrs ATTRIBUTE_UNUSED,
+	              bfd_vma pc ATTRIBUTE_UNUSED,
+	              int length ATTRIBUTE_UNUSED)
+{
+  print_vector_reg (dis_info, value | 0xf040, OP_B);
+}
+
+static void
+print_vec48sclr (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	         void * dis_info,
+	         unsigned long value,
+	         unsigned int attrs ATTRIBUTE_UNUSED,
+	         bfd_vma pc ATTRIBUTE_UNUSED,
+	         int length ATTRIBUTE_UNUSED)
+{
+  disassemble_info *info = (disassemble_info *) dis_info;
+  print_scalar_reg (dis_info, value);
+  /* 6 bits seems too many for a simple scalar reg field?  */
+  if (value & 0x10)
+    (info->fprintf_func) (info->stream, "?bit4?");
+  if (value & 0x20)
+    (info->fprintf_func) (info->stream, "?bit5?");
+}
+
+static void
+print_dummy (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
+	         void * dis_info ATTRIBUTE_UNUSED,
+	         unsigned long value ATTRIBUTE_UNUSED,
+	         unsigned int attrs ATTRIBUTE_UNUSED,
+	         bfd_vma pc ATTRIBUTE_UNUSED,
+	         int length ATTRIBUTE_UNUSED)
+{
+}
+
+/* -- */
+
