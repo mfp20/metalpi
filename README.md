@@ -39,9 +39,9 @@ This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all
 
 The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
 - the [VC4 C library](vc4-lib/) to use VC4 hardware,
-- the [VC4 libre firmware](vc4-firmware/) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads,
-- the [VC4 version](vc4-lk/) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0,
-- the [VC4 GPIOd](vc4-gpiod/) running on VPU1,
+- the [VC4 boot](vc4-firmware/) is a libre replacement for the stock `bootcode.bin` normally loaded from the SD card by Raspberry Pi. It initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads VPU0 payload,
+- the [VC4 version](vc4-lk/) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. It initializes the ARM core, maps itself to ARM address `0x0`, loads Linux on ARM and GPIOd on VPU1, then waits for instructions,
+- the [VC4 GPIOd](vc4-gpiod/) running on VPU1. It manages all the GPIO operations,
 - the [Metal-Pi C++ helper library](lib/) to use the Metal-Pi platform,
 - the [Metal-Pi Linux tools](tools/) linux command line tools,
 - the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running headless on the ARM core.
