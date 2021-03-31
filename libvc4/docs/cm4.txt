@@ -1,3 +1,0 @@
-https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=293966
-
-emmc is locked at 1.8v and cant cut power
