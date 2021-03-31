@@ -38,12 +38,12 @@ For more info about installing and building Metal-Pi see the [install file](INST
 This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all the submodules needed to setup the toolchain and build the default distribution.
 
 The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
-- the [VC4 C library](https://github.com/mfp20/vc4-lib) to use VC4 hardware,
-- the [VC4 libre firmware](https://github.com/mfp20/vc4-firmware) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads,
-- the [VC4 version](https://github.com/mfp20/vc4-lk) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0,
-- the [VC4 GPIOd](https://github.com/mfp20/vc4-gpiod) running on VPU1,
-- the [Metal-Pi C++ helper library](https://github.com/mfp20/metalpi-lib) to use the Metal-Pi platform,
-- the [Metal-Pi Linux tools](https://github.com/mfp20/metalpi-tools) linux command line tools,
+- the [VC4 C library](vc4-lib/) to use VC4 hardware,
+- the [VC4 libre firmware](vc4-firmware/) to initialize the VC4 (VPUs, QPUs, ARM, peripherals) and boot the payloads,
+- the [VC4 version](vc4-lk/) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0,
+- the [VC4 GPIOd](vc4-gpiod/) running on VPU1,
+- the [Metal-Pi C++ helper library](lib/) to use the Metal-Pi platform,
+- the [Metal-Pi Linux tools](tools/) linux command line tools,
 - the vanilla RPi version of [TinyCore Linux](http://www.tinycorelinux.net/) running headless on the ARM core.
 
 ![Metal-Pi parts](docs/metalpi_parts.png)
