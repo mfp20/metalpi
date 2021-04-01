@@ -40,7 +40,7 @@ This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all
 The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
 - ([docs](docs/vc4-lib.md)) the [VC4 C library](vc4-lib/) to use VC4 hardware,
 - ([docs](docs/vc4-boot.md)) the [VC4-stage1](vc4-lk/app/vc4-stage1) is a libre replacement for the stock `bootcode.bin` normally loaded from the SD card by Raspberry Pi. It initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads VPU0 payload,
-- ([docs](docs/vc4-gpiod.md)) the [VC4 version](vc4-lk/) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. It initializes the ARM core, maps itself to ARM address `0x0`, loads Linux on ARM and GPIOd on VPU1, then waits for instructions,
+- ([docs](docs/vc4-lk.md)) the [VC4 version](vc4-lk/) of [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. It initializes the ARM core, maps itself to ARM address `0x0`, loads Linux on ARM and GPIOd on VPU1, then waits for instructions,
 - ([docs](docs/vc4-gpiod.md)) the [VC4 GPIOd](vc4-lk/app/vc4-gpiod) running on VPU1. It manages all the GPIO operations,
 - ([docs](docs/metalpi-lib.md)) the [Metal-Pi C++ helper library](lib/) to use the Metal-Pi platform,
 - ([docs](docs/metalpi-tools.md)) the [Metal-Pi Linux tools](tools/) linux command line tools,
