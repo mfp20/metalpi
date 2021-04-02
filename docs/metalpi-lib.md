@@ -1,5 +1,24 @@
 # metalpi-lib
 
-metalpi-lib is a C++ helper library, part of the [Metal-Pi platform](https://github.com/mfp20/metalpi). It allows to manage LK and GPIOd.
+metalpi-lib is a C++ helper library, part of the [Metal-Pi platform](https://github.com/mfp20/metalpi).
 
-* [GPIOd](docs/vc4-gpiod.md),
+## System
+* ARM
+* DPI
+* GPIO
+* HVS
+* OTP
+* PV
+* PLL
+* POWER
+* DDR2
+* SDHOST
+* SMI
+* Timer
+* VEC
+* VPU
+
+## Applications,
+* [GPIOd](docs/gpiod.md),
+
+
