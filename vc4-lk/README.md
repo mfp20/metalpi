@@ -1,4 +1,4 @@
-# developing with this fork:
+# Developing with this fork:
 ```
 [clever@system76:~/apps/rpi]$ git clone --recurse-submodules git@github.com:librerpi/lk-overlay.git
 [clever@system76:~/apps/rpi]$ cd lk-overlay/
@@ -8,7 +8,7 @@
 -rwxr-xr-x 1 clever users 113K Mar 31 23:27 build-rpi3-bootcode/lk.bin
 ```
 
-# projects:
+# Available projects:
 ## rpi1-test
 builds LK for the armv6 found on the pi0 and pi1
 
