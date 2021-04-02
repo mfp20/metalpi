@@ -49,8 +49,8 @@ A text file in the output directory (ie: SD card content) is used to tweak the r
 
 * [GPGPUd](bootcode/app/gpgpud)
 * [GPIOd](bootcode/app/gpiod)
-* [Linux](http://www.tinycorelinux.net/)
-* [Micropython](http://micropython.org/)
+* Linux
+* Micropython
 
 
 ## Documentation
