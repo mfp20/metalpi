@@ -2,7 +2,7 @@
 
 metalpi-lib is a C++ helper library, part of the [Metal-Pi platform](https://github.com/mfp20/metalpi).
 
-## System
+## Hardware
 * ARM
 * DPI
 * GPIO
@@ -18,7 +18,13 @@ metalpi-lib is a C++ helper library, part of the [Metal-Pi platform](https://git
 * VEC
 * VPU
 
-## Applications,
+
+## System
+* Memory
+* Cores
+* Threads
+
+
+## Apps
 * [GPIOd](docs/gpiod.md),
-
-
+* GPGPUd
