@@ -50,7 +50,7 @@ A text file in the output directory (ie: SD card content) is used to tweak the r
 
 ## Documentation
 
-Each submodule includes a `docs` folder with its own documentation.
+You can find all available help in the [docs folder](docs/).
 
 
 ## Credits, license, contacts
