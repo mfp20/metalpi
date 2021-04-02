@@ -41,11 +41,16 @@ This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all
 
 The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
 
-- the [libre replacement for the stock `bootcode.bin`](bootcode/) normally loaded from the SD card by Raspberry Pi. [Stage1](bootcode/app/stage1) initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. [Stage2](bootcode/app/stage2) initializes the ARM core, maps itself to ARM address `0x0`, loads [Linux](http://www.tinycorelinux.net/) on ARM and [GPIOd](bootcode/app/gpiod) on VPU1,
+- the [libre replacement for the stock `bootcode.bin`](bootcode/) normally loaded from the SD card by Raspberry Pi. [Stage1](bootcode/app/stage1) initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. [Stage2](bootcode/app/stage2) initializes the ARM core, maps itself to ARM address `0x0`, and run the selected payloads for the available cores,
 - the [Metal-Pi C++ Platform Abstraction Library](lib/) ([docs](docs/metalpi-lib.md)),
 - the [Metal-Pi Linux tools](tools/) ([docs](docs/metalpi-tools.md)) linux command line tools.
 
-A text file in the output directory (ie: SD card content) is used to tweak the runtime options.
+A text file in the output directory (ie: SD card content) is used to tweak the runtime options. User can select what kind of application to run on startup:
+
+* [GPGPUd](bootcode/app/gpgpud)
+* [GPIOd](bootcode/app/gpiod)
+* [Linux](http://www.tinycorelinux.net/)
+* [Micropython](http://micropython.org/)
 
 
 ## Documentation
