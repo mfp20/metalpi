@@ -45,12 +45,12 @@ The build process will download, build and pack a ready to use folder to be copi
 - the [Metal-Pi C++ Platform Abstraction Library](lib/) ([docs](docs/metalpi-lib.md)),
 - the [Metal-Pi Linux tools](tools/) ([docs](docs/metalpi-tools.md)) linux command line tools.
 
-A text file in the output directory (ie: SD card content) is used to tweak the runtime options. User can select what kind of application to run on startup:
+A text file in the output directory (ie: SD card content) is used to tweak the runtime options. User can select what kind of payload to run on startup:
 
-* [GPGPUd](bootcode/app/gpgpud)
-* [GPIOd](bootcode/app/gpiod)
-* [Linux](http://www.tinycorelinux.net/)
-* [Micropython](http://micropython.org/)
+* [GPGPUd](bootcode/app/gpgpud): runs on VPU0 as a thread, but can spawn a secondary thread on VPU1 to fully exploit QPUs,
+* [GPIOd](bootcode/app/gpiod): runs on VPU1 to manage the GPIO I/O using DMA and PWM devices,
+* Linux: runs on ARM,
+* Micropython: runs on ARM.
 
 
 ## Documentation
