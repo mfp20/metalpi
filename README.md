@@ -37,9 +37,9 @@ For more info about installing and building Metal-Pi see the [install file](INST
 
 This repository includes [Nix](https://nixos.org/)-based [scripts](nix/) and all the submodules needed to setup the toolchain and build the default distribution.
 
-The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
-
 ![Metal-Pi parts](docs/metalpi_parts.png)
+
+The build process will download, build and pack a ready to use folder to be copied on your SD card. It will include:
 
 - the [libre replacement for the stock `bootcode.bin`](vc4-lk/) normally loaded from the SD card by Raspberry Pi. [Stage1](vc4-lk/app/stage1) initializes PLLC and moves VPU0 over to it, brings up UART, performs SDRAM initialization, mapping it to `0xC0000000` (uncached alias), and loads [LittleKernel](https://github.com/littlekernel/lk) running on VPU0. [Stage2](vc4-lk/app/stage2) initializes the ARM core, maps itself to ARM address `0x0`, loads [Linux](http://www.tinycorelinux.net/) on ARM and [GPIOd](vc4-lk/app/gpiod) on VPU1,
 - the [Metal-Pi C++ Platform Abstraction Library](lib/) ([docs](docs/metalpi-lib.md)),
