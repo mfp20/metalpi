@@ -11,7 +11,7 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 |VEC(5)|yes|yes|yes|yes|yes|[tested NTSC video only](https://www.youtube.com/watch?v=XBdUVmar7Rg)|
 |DPI(6)|no|no|no|no|no||
 |DSI(7)|no|no|no|no|no||
-|HDMI(8)|no|no|no|no|no||
+|HDMI(8)|no|no|no|no|no|framebuffer only|
 |UNICAM(9)|no|no|no|no|no||
 |SMI(10)|no|no|no|no|no||
 |ISP(11)|no|no|no|no|no||
@@ -84,7 +84,7 @@ NOTE: these tables are just a stub, they don't reflect the real status (yet! wor
 |SPI0, SPI1, SPI2|no|no|no|no|no||
 |USB|yes|yes|yes|yes|yes|USB-host works, USB-device might work|
 |Ethernet|NA|yes|yes|yes|yes|built-in usb ethernet|
-|WiFi|no|no|no|no|no||
+|WiFi|no|no|no|no|no|can be done|
 |Create/start/stop/destroy LK threads on VPU0|no|no|no|no|no||
 |Manage gpiod|no|no|no|no|no||
 |GPGPU on QPUs|no|no|no|no|no||
